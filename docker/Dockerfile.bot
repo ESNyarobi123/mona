@@ -8,7 +8,8 @@ COPY package.json package-lock.json ./
 COPY apps/bot/package.json apps/bot/
 COPY packages/i18n/package.json packages/i18n/
 COPY packages/utils/package.json packages/utils/
-RUN npm ci --workspace=@monana/bot --include-workspace-root \
+# Install full workspace tree so baileys/express hoist correctly for tsx.
+RUN npm ci --include-workspace-root \
   && npm install tsx@4.22.4 --no-save
 
 FROM base AS runner
@@ -19,7 +20,7 @@ ENV BOT_SESSION_PATH=/data/session
 RUN apk add --no-cache wget
 
 COPY --from=deps /app/node_modules ./node_modules
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY apps/bot ./apps/bot
 COPY packages/i18n ./packages/i18n
 COPY packages/utils ./packages/utils
@@ -29,9 +30,10 @@ RUN mkdir -p /data/session && addgroup --system --gid 1001 bot \
   && chown -R bot:bot /data/session
 
 USER bot
+WORKDIR /app/apps/bot
 VOLUME /data/session
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD wget -qO- http://127.0.0.1:4000/health >/dev/null || exit 1
 
-CMD ["npx", "tsx", "apps/bot/src/index.ts"]
+CMD ["npx", "tsx", "src/index.ts"]
