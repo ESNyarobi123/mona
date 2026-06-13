@@ -1,0 +1,12 @@
+# One-shot Prisma migrate (+ optional seed) before web starts
+FROM node:20-alpine
+WORKDIR /app
+RUN apk add --no-cache openssl
+
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
+RUN npm ci --ignore-scripts \
+  && npx prisma generate --schema=prisma/schema.prisma
+
+ENV NODE_ENV=production
+ENTRYPOINT ["sh", "-c", "npx prisma migrate deploy --schema=prisma/schema.prisma && if [ \"${RUN_SEED:-false}\" = \"true\" ]; then npx prisma db seed; fi"]

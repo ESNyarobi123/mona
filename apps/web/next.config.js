@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   reactStrictMode: true,
   /** Prisma must not be webpack-bundled (breaks model delegates → undefined.findMany). */
   serverExternalPackages: ["@prisma/client"],

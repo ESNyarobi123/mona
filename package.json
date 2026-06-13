@@ -19,7 +19,11 @@
     "test:backend-apis": "tsx scripts/test-backend-apis.ts",
     "test:grocery-tiers": "tsx scripts/test-grocery-tiers.ts",
     "test:hot-products": "tsx scripts/test-hot-products.ts",
-    "test:admin-apis": "tsx scripts/test-admin-dashboard-apis.ts"
+    "test:admin-apis": "tsx scripts/test-admin-dashboard-apis.ts",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:deploy": "bash scripts/docker-deploy.sh"
   },
   "prisma": {
     "schema": "prisma/schema.prisma",

@@ -31,6 +31,12 @@ npm-debug.log*
 apps/web/public/uploads/catalog/*
 !apps/web/public/uploads/catalog/.gitkeep
 
+# docker TLS (generated on server)
+docker/nginx/ssl/*.pem
+docker/nginx/certbot-www/*
+!docker/nginx/ssl/.gitkeep
+!docker/nginx/certbot-www/.gitkeep
+
 # editor
 .vscode/
 .idea/
