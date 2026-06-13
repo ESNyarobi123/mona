@@ -3,8 +3,14 @@ FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache libc6-compat wget
 COPY package.json package-lock.json ./
-# Full lockfile install so baileys/express hoist to root node_modules.
+COPY apps/bot/package.json apps/bot/
+COPY packages/i18n/package.json packages/i18n/
+COPY packages/utils/package.json packages/utils/
 RUN npm ci --omit=dev --ignore-scripts \
+  --workspace=@monana/bot \
+  --workspace=@monana/i18n \
+  --workspace=@monana/utils \
+  --include-workspace-root \
   && npm install tsx@4.22.4 --no-save
 
 FROM node:20-alpine AS runner
@@ -16,6 +22,7 @@ ENV BOT_SESSION_PATH=/data/session
 RUN apk add --no-cache wget
 
 COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/apps/bot/node_modules ./apps/bot/node_modules
 COPY package.json package-lock.json ./
 COPY apps/bot ./apps/bot
 COPY packages/i18n ./packages/i18n
