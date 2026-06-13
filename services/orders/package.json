@@ -1,0 +1,12 @@
+{
+  "name": "@monana/orders",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "types": "index.ts",
+  "dependencies": {
+    "@monana/db": "*",
+    "@monana/types": "*",
+    "@monana/utils": "*"
+  }
+}

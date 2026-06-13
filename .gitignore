@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# env
+.env
+.env*.local
+
+# next.js
+.next/
+out/
+build/
+dist/
+
+# prisma
+prisma/migrations/dev.db*
+
+# whatsapp bot session (auth credentials)
+apps/bot/session/
+**/auth_info_baileys/
+
+# logs
+*.log
+npm-debug.log*
+
+# os
+.DS_Store
+
+# uploaded catalog images (keep folder)
+apps/web/public/uploads/catalog/*
+!apps/web/public/uploads/catalog/.gitkeep
+
+# editor
+.vscode/
+.idea/

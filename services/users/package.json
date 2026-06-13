@@ -1,0 +1,11 @@
+{
+  "name": "@monana/users",
+  "version": "0.1.0",
+  "private": true,
+  "main": "index.ts",
+  "dependencies": {
+    "@monana/db": "*",
+    "@monana/utils": "*",
+    "bcryptjs": "^2.4.3"
+  }
+}

@@ -1,0 +1,20 @@
+/* Monana design system — Orange + Navy + Red */
+:root {
+  --mn-orange: #ff6b2c;
+  --mn-orange-light: #ff8f5c;
+  --mn-orange-dark: #e85a1a;
+  --mn-navy: #1b2845;
+  --mn-navy-light: #2a3f66;
+  --mn-red: #e63946;
+  --mn-red-light: #ff4d5a;
+  --mn-bg: #f9f9f9;
+  --mn-bg-white: #ffffff;
+  --mn-text: #1a1a2e;
+  --mn-text-muted: #6b7280;
+  --mn-border: #e5e7eb;
+  --mn-shadow: 0 8px 32px rgba(27, 40, 69, 0.08);
+  --mn-shadow-lg: 0 20px 60px rgba(27, 40, 69, 0.12);
+  --mn-radius: 16px;
+  --mn-radius-pill: 999px;
+  --mn-font: var(--font-poppins, system-ui, sans-serif);
+}
