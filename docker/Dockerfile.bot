@@ -1,18 +1,14 @@
 # Monana WhatsApp Bot — Baileys + Express bridge
-FROM node:20-alpine AS base
+FROM node:20-alpine AS deps
 WORKDIR /app
-RUN apk add --no-cache libc6-compat
-
-FROM base AS deps
+RUN apk add --no-cache libc6-compat wget
 COPY package.json package-lock.json ./
-COPY apps/bot/package.json apps/bot/
-COPY packages/i18n/package.json packages/i18n/
-COPY packages/utils/package.json packages/utils/
-# Install full workspace tree so baileys/express hoist correctly for tsx.
-RUN npm ci --include-workspace-root \
+# Full lockfile install so baileys/express hoist to root node_modules.
+RUN npm ci --omit=dev --ignore-scripts \
   && npm install tsx@4.22.4 --no-save
 
-FROM base AS runner
+FROM node:20-alpine AS runner
+WORKDIR /app
 ENV NODE_ENV=production
 ENV BOT_PORT=4000
 ENV BOT_SESSION_PATH=/data/session
