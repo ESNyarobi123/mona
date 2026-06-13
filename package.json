@@ -30,6 +30,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "devDependencies": {
+    "bcryptjs": "^3.0.3",
     "prisma": "^5.22.0",
     "tsx": "^4.22.4",
     "typescript": "^5.6.3"
