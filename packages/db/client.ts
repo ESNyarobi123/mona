@@ -16,19 +16,23 @@ function isStaleClient(client: PrismaClient | undefined): boolean {
   return typeof client.groceryMarketRun === "undefined";
 }
 
-let prisma = globalForPrisma.prisma;
+function getPrismaClient(): PrismaClient {
+  let client = globalForPrisma.prisma;
 
-if (isStaleClient(prisma)) {
-  void prisma?.$disconnect();
-  prisma = undefined;
-  globalForPrisma.prisma = undefined;
-}
-
-if (!prisma) {
-  prisma = createPrismaClient();
-  if (process.env.NODE_ENV !== "production") {
-    globalForPrisma.prisma = prisma;
+  if (isStaleClient(client)) {
+    void client?.$disconnect();
+    client = undefined;
+    globalForPrisma.prisma = undefined;
   }
+
+  if (!client) {
+    client = createPrismaClient();
+    if (process.env.NODE_ENV !== "production") {
+      globalForPrisma.prisma = client;
+    }
+  }
+
+  return client;
 }
 
-export { prisma };
+export const prisma = getPrismaClient();
