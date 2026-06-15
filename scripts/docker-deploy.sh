@@ -25,7 +25,9 @@ if [[ ! -f .env ]]; then
 fi
 
 # shellcheck disable=SC1091
+set -a
 source .env 2>/dev/null || true
+set +a
 PUBLIC_IP="${PUBLIC_IP:-$(curl -sf --max-time 5 ifconfig.me || echo 178.104.240.204)}"
 
 if [[ -z "${APP_DOMAIN:-}" ]]; then
