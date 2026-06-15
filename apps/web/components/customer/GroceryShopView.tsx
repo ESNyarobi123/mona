@@ -286,7 +286,23 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
           <p>{t("noPackages")}</p>
         </div>
       ) : (
-        <div className="store-grid store-grid--packages">
+        <>
+          <article className="store-card store-card--package store-card--custom">
+            <span className="store-card__kind">{t("enrollCustomPackage")}</span>
+            <h3>{t("enrollCustomPackage")}</h3>
+            <p className="store-card__desc">{t("enrollCustomPackageSub")}</p>
+            <Link
+              href={
+                getStoredUser()
+                  ? "/account/membership/enroll"
+                  : "/login?next=/account/membership/enroll"
+              }
+              className="landing-btn landing-btn--orange store-card__btn"
+            >
+              {getStoredUser() ? t("joinMembership") : t("joinLogin")}
+            </Link>
+          </article>
+          <div className="store-grid store-grid--packages">
           {packages.map((pkg) => (
             <article key={pkg.id} className="store-card store-card--package">
               <span className="store-card__kind">{PACKAGE_KIND_LABELS[pkg.kind] ?? pkg.kind}</span>
@@ -312,8 +328,8 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
               <Link
                 href={
                   getStoredUser()
-                    ? "/account/membership/enroll"
-                    : "/login?next=/account/membership/enroll"
+                    ? `/account/membership/enroll?packageId=${pkg.id}`
+                    : `/login?next=${encodeURIComponent(`/account/membership/enroll?packageId=${pkg.id}`)}`
                 }
                 className="landing-btn landing-btn--navy store-card__btn"
               >
@@ -321,7 +337,8 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
               </Link>
             </article>
           ))}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );

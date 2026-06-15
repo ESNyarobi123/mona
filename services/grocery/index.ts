@@ -22,6 +22,8 @@ export {
   isBeforeOrderCutoff,
   parsePackageItems,
   pricingForSubscription,
+  pricingForPackageBasket,
+  assertBasketMeetsPackageMinimums,
   resolveLineItemsWithTotal,
 } from "./subscription-engine";
 
@@ -176,8 +178,54 @@ export async function getProductById(id: string) {
   return prisma.product.findUnique({ where: { id }, include: { category: true } });
 }
 
+type PackageItem = { productId: string; quantity: number };
+
+function stripProductFromItems(items: unknown, productId: string): PackageItem[] | null {
+  if (!Array.isArray(items)) return null;
+  const next = (items as PackageItem[]).filter((row) => row?.productId !== productId);
+  return next.length === (items as PackageItem[]).length ? null : next;
+}
+
 export async function deleteProduct(id: string) {
-  return prisma.product.update({ where: { id }, data: { available: false } });
+  const product = await prisma.product.findUnique({ where: { id } });
+  if (!product) throw new Error("Bidhaa haipatikani");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.orderItem.updateMany({ where: { productId: id }, data: { productId: null } });
+
+    const packages = await tx.groceryPackage.findMany({ select: { id: true, items: true } });
+    for (const pkg of packages) {
+      const nextItems = stripProductFromItems(pkg.items, id);
+      if (!nextItems) continue;
+      await tx.groceryPackage.update({
+        where: { id: pkg.id },
+        data: {
+          items: nextItems,
+          ...(nextItems.length === 0 ? { active: false } : {}),
+        },
+      });
+    }
+
+    const subs = await tx.grocerySubscription.findMany({
+      select: { id: true, defaultBasket: true, nextDeliveryItems: true },
+    });
+    for (const sub of subs) {
+      const defaultBasket = stripProductFromItems(sub.defaultBasket, id);
+      const nextDeliveryItems = stripProductFromItems(sub.nextDeliveryItems, id);
+      if (!defaultBasket && !nextDeliveryItems) continue;
+      await tx.grocerySubscription.update({
+        where: { id: sub.id },
+        data: {
+          ...(defaultBasket ? { defaultBasket } : {}),
+          ...(nextDeliveryItems ? { nextDeliveryItems } : {}),
+        },
+      });
+    }
+
+    await tx.product.delete({ where: { id } });
+  });
+
+  return { deleted: true };
 }
 
 export async function getPackageById(id: string) {
@@ -201,10 +249,11 @@ export async function createProduct(data: {
 }
 
 export async function listPackages() {
-  return prisma.groceryPackage.findMany({
-    where: { active: true },
+  const rows = await prisma.groceryPackage.findMany({
+    where: { active: true, price: { gt: 0 } },
     orderBy: { name: "asc" },
   });
+  return rows.filter((p) => Array.isArray(p.items) && p.items.length > 0);
 }
 
 export async function listAllPackages() {

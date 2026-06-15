@@ -75,8 +75,37 @@ export const UI_MESSAGES = {
   footerRegister: { en: "Register", sw: "Jisajili" },
   footerMyOrders: { en: "My Orders", sw: "Maagizo Yangu" },
   footerHelp: { en: "Help Center", sw: "Kituo cha Msaada" },
-  footerAdmin: { en: "Admin", sw: "Admin" },
+  footerPrivacy: { en: "Privacy Policy", sw: "Sera ya Faragha" },
   footerCopy: { en: "Food + Grocery delivery platform.", sw: "Jukwaa la utoaji chakula na grocery." },
+
+  // ── Privacy policy ──
+  privacyEyebrow: { en: "Legal", sw: "Kisheria" },
+  privacyTitle: { en: "Privacy Policy", sw: "Sera ya Faragha" },
+  privacyUpdated: { en: "Last updated: June 2026", sw: "Imesasishwa: Juni 2026" },
+  privacyIntro: {
+    en: "Monana (“we”, “us”) respects your privacy. This policy explains what we collect, how we use it, and your choices when you order food or groceries through our website or WhatsApp.",
+    sw: "Monana (“sisi”) tunaheshimu faragha yako. Sera hii inaeleza tunachokusanya, jinsi tunavyokitumia, na chaguo zako unapo-order chakula au grocery kupitia tovuti yetu au WhatsApp.",
+  },
+  privacyS1Title: { en: "Information we collect", sw: "Taarifa tunazokusanya" },
+  privacyS1Body: {
+    en: "We collect your name, phone number, delivery address, order details, and payment references (e.g. Lipa Namba transaction IDs). If you register on the web, we also store a password (encrypted). WhatsApp orders are linked to your phone number.",
+    sw: "Tunakusanya jina, namba ya simu, anwani ya utoaji, maelezo ya oda, na reference za malipo (mf. namba za Lipa Namba). Ukijisajili kwenye web, tunahifadhi nywila (imefichwa). Oda za WhatsApp zinahusishwa na namba yako ya simu.",
+  },
+  privacyS2Title: { en: "How we use your data", sw: "Jinsi tunavyotumia data" },
+  privacyS2Body: {
+    en: "We use your information to process orders, arrange delivery, confirm payments, send order updates (including via WhatsApp), improve our service, and respond to support requests. We do not sell your personal data to third parties.",
+    sw: "Tunatumia taarifa zako kushughulikia oda, kupanga utoaji, kuthibitisha malipo, kutuma taarifa za oda (pamoja na WhatsApp), kuboresha huduma, na kujibu maombi ya msaada. Hatuuzi data yako kwa wahusika wengine.",
+  },
+  privacyS3Title: { en: "Sharing & security", sw: "Kushiriki na usalama" },
+  privacyS3Body: {
+    en: "We share order information only with our delivery and operations team as needed to fulfil your order. We use secure connections (HTTPS) and restrict admin access to authorised staff. Keep your login details private.",
+    sw: "Tunashiriki taarifa za oda na timu yetu ya utoaji na uendeshaji inapohitajika kukamilisha oda yako. Tunatumia muunganisho salama (HTTPS) na kuzuia ufikiaji wa admin kwa wafanyakazi walioidhinishwa. Weka siri za kuingia zako salama.",
+  },
+  privacyS4Title: { en: "Your rights & contact", sw: "Haki zako na mawasiliano" },
+  privacyS4Body: {
+    en: "You may request correction of your profile details or ask questions about this policy by contacting us through the Help Center or WhatsApp. You can stop using our service at any time.",
+    sw: "Unaweza kuomba kusahihishwa maelezo ya wasifu wako au kuuliza kuhusu sera hii kupitia Kituo cha Msaada au WhatsApp. Unaweza kuacha kutumia huduma yetu wakati wowote.",
+  },
 
   // ── Common ──
   loading: { en: "Loading…", sw: "Inapakia…" },
@@ -196,6 +225,27 @@ export const UI_MESSAGES = {
   enrollProgress: { en: "Enrollment progress", sw: "Hatua za usajili" },
   reduceQty: { en: "Reduce quantity", sw: "Punguza idadi" },
   addQty: { en: "Add quantity", sw: "Ongeza idadi" },
+  enrollCustomPackage: {
+    en: "Build your own package",
+    sw: "Jenga kifurushi chako",
+  },
+  enrollCustomPackageSub: {
+    en: "Pick your own products and delivery schedule from scratch.",
+    sw: "Chagua bidhaa zako na ratiba ya utoaji kutoka mwanzo.",
+  },
+  enrollPackageHint: {
+    en: "Base items from this package are included. You can add more, but cannot reduce them.",
+    sw: "Bidhaa za msingi za kifurushi hiki zimejumuishwa. Unaweza kuongeza zaidi, lakini huwezi kuzipunguza.",
+  },
+  enrollPackageSelected: {
+    en: "Package: {name}",
+    sw: "Kifurushi: {name}",
+  },
+  packageBaseItem: { en: "Included in package", sw: "Imejumuishwa kwenye kifurushi" },
+  packageNoItems: {
+    en: "This package has no products. Choose another package or build your own.",
+    sw: "Kifurushi hiki hakina bidhaa. Chagua kifurushi kingine au jenga chako.",
+  },
   actionFailed: { en: "Action failed", sw: "Imeshindwa" },
   freqWeekly: { en: "Weekly", sw: "Kila wiki" },
   freqMonthly: { en: "Monthly", sw: "Kila mwezi" },
@@ -431,6 +481,14 @@ export const UI_MESSAGES = {
     sw: "Ukishalipa, andika reference ya muamala (namba uliyopokea kwenye SMS au ujumbe wa M-Pesa) — kama kwenye WhatsApp: nimelipa ABC123",
   },
   paymentRefLabel: { en: "Payment reference", sw: "Reference ya malipo" },
+  paymentRefDuplicateOther: {
+    en: "This payment reference was already used by another customer. Use your own transaction reference.",
+    sw: "Reference hii tayari imetumika na mteja mwingine. Tumia reference ya muamala wako pekee.",
+  },
+  paymentRefDuplicateSelf: {
+    en: "You already used this payment reference on another order. Send the reference for this transaction only.",
+    sw: "Reference hii tayari umetumia kwenye oda nyingine. Tuma reference ya muamala huu pekee.",
+  },
   paymentRefPlaceholder: { en: "e.g. CKL123456789 or SMS message", sw: "Mf. CKL123456789 au ujumbe wa SMS" },
   orderRefHint: { en: "Order reference (memo):", sw: "Reference ya oda (kumbukumbu):" },
   paymentSubmitting: { en: "Submitting…", sw: "Inatuma…" },

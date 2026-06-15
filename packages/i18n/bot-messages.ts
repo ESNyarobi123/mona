@@ -51,6 +51,7 @@ export type BotMessageKey =
   | "payQrCaption"
   | "payNoQr"
   | "awaitingPayment"
+  | "paymentRefRejected"
   | "itemAdded"
   | "membershipReady"
   | "backHint"
@@ -136,6 +137,8 @@ const EN: Record<BotMessageKey, string> = {
   payNoQr: "✅ *When you're done paying, reply with one word:*\n👉 *paid*",
   awaitingPayment:
     "💳 Still waiting for your payment.\n\n✅ Once you've paid, just reply: *paid*\n(You can also paste your M-Pesa code.)",
+  paymentRefRejected:
+    "That payment reference could not be accepted. Check the code and try again.",
   itemAdded: "✅ Added: {item}",
   membershipReady: "✅ *Membership ready!*\nPlan: *{plan}*\n📅 {schedule}",
   backHint: "↩️ _Type *0* to go back_",
@@ -224,6 +227,8 @@ const SW: Record<BotMessageKey, string> = {
   payNoQr: "✅ *Ukimaliza kulipa, jibu kwa neno moja tu:*\n👉 *nimelipa*",
   awaitingPayment:
     "💳 Bado nasubiri malipo yako.\n\n✅ Ukimaliza kulipa, jibu tu: *nimelipa*\n(Au bandika namba ya M-Pesa uliyopata.)",
+  paymentRefRejected:
+    "Reference hiyo haikubaliki. Angalia namba ya muamala na jaribu tena.",
   itemAdded: "✅ Imeongezwa: {item}",
   membershipReady: "✅ *Uanachama uko tayari!*\nMpango: *{plan}*\n📅 {schedule}",
   backHint: "↩️ _Andika *0* kurudi nyuma_",

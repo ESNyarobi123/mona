@@ -12,6 +12,9 @@ import {
   type PackageItem,
   resolveLineItemsWithTotal,
   pricingForSubscription,
+  pricingForPackageBasket,
+  assertBasketMeetsPackageMinimums,
+  parsePackageItems,
   frequencyForPackageKind,
 } from "./subscription-engine";
 
@@ -216,14 +219,33 @@ export async function getOnDemandCatalog(categoryId?: string) {
 export async function previewMembershipBasket(
   plan: "WEEKLY" | "MONTHLY",
   items: PackageItem[],
-  locale: AppLocale = "en"
+  locale: AppLocale = "en",
+  packageId?: string
 ) {
-  const pricing = await pricingForSubscription(plan, items);
+  let pricing: Awaited<ReturnType<typeof pricingForSubscription>>;
+  let planLabel = membershipPlanTitle(plan, locale);
+
+  if (packageId) {
+    const pkg = await prisma.groceryPackage.findUnique({ where: { id: packageId } });
+    if (!pkg || !pkg.active || Number(pkg.price) <= 0) {
+      throw new Error("Kifurushi haipatikani au hauko hai");
+    }
+    const minimums = parsePackageItems(pkg.items);
+    assertBasketMeetsPackageMinimums(items, minimums);
+    if (frequencyForPackageKind(pkg.kind) !== plan) {
+      throw new Error("Mpango haukilingani na kifurushi");
+    }
+    pricing = await pricingForPackageBasket(pkg, items);
+    planLabel = pkg.name;
+  } else {
+    pricing = await pricingForSubscription(plan, items);
+  }
+
   const lineItems = await resolveLineItemsWithTotal(items);
 
   return {
     plan,
-    planLabel: membershipPlanTitle(plan, locale),
+    planLabel,
     deliveryDayHint:
       plan === "WEEKLY"
         ? locale === "sw"
@@ -232,7 +254,11 @@ export async function previewMembershipBasket(
         : locale === "sw"
           ? "Utachagua tarehe ya mwezi hatua inayofuata"
           : "You will pick a day of the month next",
-    items: lineItems.items,
+    items: lineItems.items.map((it) => ({
+      name: it.name,
+      quantity: Number(it.quantity),
+      lineTotal: Math.round(it.price * Number(it.quantity)),
+    })),
     pricing,
     message:
       pricing.discountAmount > 0 || pricing.freeDelivery

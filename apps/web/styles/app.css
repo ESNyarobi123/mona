@@ -265,6 +265,13 @@
   opacity: 0.95;
 }
 
+.auth-split__brand-name {
+  font-weight: 800;
+  font-size: 1.35rem;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
 .auth-split__brand-icon {
   width: 42px;
   height: 42px;
@@ -3933,6 +3940,89 @@
   color: var(--mn-orange-dark);
 }
 
+/* Legal pages (privacy, …) */
+
+.legal-page {
+  max-width: 720px;
+}
+
+.legal-page__hero {
+  margin-bottom: 1.75rem;
+}
+
+.legal-page__eyebrow {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mn-orange);
+}
+
+.legal-page__title {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 800;
+  color: var(--mn-navy);
+  line-height: 1.15;
+}
+
+.legal-page__meta {
+  margin: 0 0 1rem;
+  font-size: 0.82rem;
+  color: var(--mn-text-muted);
+}
+
+.legal-page__intro {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.65;
+  color: var(--mn-text);
+}
+
+.legal-page__sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.legal-page__section {
+  padding: 1.15rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid var(--mn-border);
+  background: var(--mn-bg-white);
+  box-shadow: var(--mn-shadow);
+}
+
+.legal-page__section h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--mn-navy);
+}
+
+.legal-page__section p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--mn-text-muted);
+}
+
+.legal-page__back {
+  margin: 1.5rem 0 0;
+  font-size: 0.88rem;
+  color: var(--mn-text-muted);
+}
+
+.legal-page__back a {
+  color: var(--mn-orange);
+  font-weight: 600;
+}
+
+.legal-page__back a:hover {
+  text-decoration: underline;
+}
+
 /* ── Profile page ── */
 .profile-page {
   max-width: 520px;
@@ -5612,6 +5702,21 @@
   background: var(--mn-bg);
   cursor: pointer;
   font-size: 1.1rem;
+}
+
+.enroll-product__qty button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.enroll-product__base-tag {
+  display: block;
+  color: var(--mn-orange);
+  font-weight: 600;
+}
+
+.store-card--custom {
+  margin-bottom: 1rem;
 }
 
 .enroll-footer {

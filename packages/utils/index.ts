@@ -27,6 +27,21 @@ export function normalizeTanzaniaPhone(phone: string): string {
   return digits;
 }
 
+/** Extract MSISDN from Baileys JID (e.g. 255712…:12@s.whatsapp.net → 255712…). */
+export function jidToMsisdn(jid: string | null | undefined): string | null {
+  if (!jid?.trim()) return null;
+  const userPart = jid.split("@")[0]?.split(":")[0] ?? "";
+  const digits = normalizeTanzaniaPhone(userPart);
+  return digits.length >= 12 ? digits : null;
+}
+
+/** Customer-facing wa.me link — digits only, Tanzania-normalized. */
+export function whatsAppUrlFromPhone(phone: string | null | undefined): string | null {
+  if (!phone?.trim()) return null;
+  const digits = normalizeTanzaniaPhone(phone);
+  return digits.length >= 12 ? `https://wa.me/${digits}` : null;
+}
+
 /** Sum a list of cart-like items. */
 export function calcTotal(items: { price: number; quantity: number }[]): number {
   return items.reduce((sum, it) => sum + it.price * it.quantity, 0);
@@ -35,4 +50,29 @@ export function calcTotal(items: { price: number; quantity: number }[]): number 
 /** Generate a short human-friendly order reference. */
 export function genOrderRef(): string {
   return "MNA-" + Date.now().toString(36).toUpperCase();
+}
+
+/**
+ * Normalize a customer-submitted Lipa Namba / M-Pesa proof reference for storage and dedup.
+ * Returns empty string when input is not usable as a proof reference.
+ */
+export function normalizePaymentProofReference(reference: string): string {
+  const trimmed = reference.trim();
+  if (!trimmed) return "";
+  if (/^manual$/i.test(trimmed)) return "MANUAL";
+  return trimmed.replace(/\s+/g, "").toUpperCase();
+}
+
+export function paymentReferenceDuplicateMessage(
+  sameUser: boolean,
+  locale: "en" | "sw" = "sw"
+): string {
+  if (locale === "en") {
+    return sameUser
+      ? "You already used this payment reference on another order. Send the reference for this transaction only."
+      : "This payment reference was already used by another customer. Use your own transaction reference.";
+  }
+  return sameUser
+    ? "Reference hii tayari umetumia kwenye oda nyingine. Tuma reference ya muamala huu pekee."
+    : "Reference hii tayari imetumika na mteja mwingine. Tumia reference ya muamala wako pekee.";
 }

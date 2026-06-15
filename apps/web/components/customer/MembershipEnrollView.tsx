@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { apiGet, apiPost, getStoredUser } from "../../lib/admin-api";
 import { formatMoney } from "../../lib/format";
@@ -37,6 +37,14 @@ type Setup = {
 
 type BasketLine = { productId: string; quantity: number };
 
+type StorePackage = {
+  id: string;
+  name: string;
+  description: string | null;
+  kind: string;
+  items: { productId: string; quantity: number }[];
+};
+
 type Preview = {
   planLabel: string;
   items: { name: string; quantity: number; lineTotal: number }[];
@@ -51,15 +59,37 @@ type Preview = {
   message: string;
 };
 
-const STEPS = ["plan", "day", "basket", "confirm"] as const;
-type Step = (typeof STEPS)[number];
+const STEPS_CUSTOM = ["plan", "day", "basket", "confirm"] as const;
+const STEPS_PACKAGE = ["day", "basket", "confirm"] as const;
+type Step = (typeof STEPS_CUSTOM)[number];
+
+function planFromKind(kind: string): "WEEKLY" | "MONTHLY" {
+  return kind === "MONTHLY_PANTRY" ? "MONTHLY" : "WEEKLY";
+}
+
+function basketFromItems(items: { productId: string; quantity: number }[]) {
+  return Object.fromEntries(items.map((item) => [item.productId, item.quantity]));
+}
+
+function parsePackageItems(raw: unknown): { productId: string; quantity: number }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((row): row is { productId: string; quantity: number } => {
+      return Boolean(row && typeof row === "object" && "productId" in row && "quantity" in row);
+    })
+    .map((row) => ({ productId: row.productId, quantity: Number(row.quantity) }));
+}
 
 export function MembershipEnrollView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const packageId = searchParams.get("packageId");
   const { locale, t } = useAppLocale();
   const user = getStoredUser();
   const [step, setStep] = useState<Step>("plan");
   const [setup, setSetup] = useState<Setup | null>(null);
+  const [selectedPackage, setSelectedPackage] = useState<StorePackage | null>(null);
+  const [minBasket, setMinBasket] = useState<Record<string, number>>({});
   const [plan, setPlan] = useState<"WEEKLY" | "MONTHLY" | null>(null);
   const [dayWeek, setDayWeek] = useState<number | null>(null);
   const [dayMonth, setDayMonth] = useState(15);
@@ -71,12 +101,49 @@ export function MembershipEnrollView() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  const activeSteps = selectedPackage ? STEPS_PACKAGE : STEPS_CUSTOM;
+
   useEffect(() => {
-    apiGet<Setup>(`/api/grocery/store/membership?locale=${locale}`)
-      .then(setSetup)
-      .catch((err) => setError(err instanceof Error ? err.message : t("loadFailed")))
-      .finally(() => setLoading(false));
-  }, [locale]);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError("");
+      try {
+        const setupData = await apiGet<Setup>(`/api/grocery/store/membership?locale=${locale}`);
+        if (cancelled) return;
+        setSetup(setupData);
+
+        if (packageId) {
+          const pkg = await apiGet<StorePackage>(`/api/grocery/packages/${packageId}`);
+          if (cancelled) return;
+          const items = parsePackageItems(pkg.items);
+          if (!items.length) {
+            throw new Error(t("packageNoItems"));
+          }
+          const baseBasket = basketFromItems(items);
+          setSelectedPackage({ ...pkg, items });
+          setMinBasket(baseBasket);
+          setBasket(baseBasket);
+          setPlan(planFromKind(pkg.kind));
+          setStep("day");
+        } else {
+          setSelectedPackage(null);
+          setMinBasket({});
+          setStep("plan");
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : t("loadFailed"));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [locale, packageId, t]);
 
   const basketLines: BasketLine[] = useMemo(
     () =>
@@ -86,11 +153,12 @@ export function MembershipEnrollView() {
     [basket]
   );
 
-  const stepIndex = STEPS.indexOf(step);
+  const stepIndex = activeSteps.indexOf(step as (typeof STEPS_PACKAGE)[number]);
 
   function setQty(productId: string, delta: number) {
     setBasket((prev) => {
-      const next = Math.max(0, (prev[productId] ?? 0) + delta);
+      const floor = minBasket[productId] ?? 0;
+      const next = Math.max(floor, (prev[productId] ?? 0) + delta);
       if (next === 0) {
         const { [productId]: _, ...rest } = prev;
         return rest;
@@ -104,6 +172,7 @@ export function MembershipEnrollView() {
     const data = await apiPost<Preview>(`/api/grocery/store/membership/preview?locale=${locale}`, {
       plan,
       defaultBasket: basketLines,
+      ...(selectedPackage ? { packageId: selectedPackage.id } : {}),
     });
     setPreview(data);
   }
@@ -160,6 +229,7 @@ export function MembershipEnrollView() {
         preferredDayOfWeek: plan === "WEEKLY" ? dayWeek ?? undefined : undefined,
         preferredDayOfMonth: plan === "MONTHLY" ? dayMonth : undefined,
         defaultBasket: basketLines,
+        ...(selectedPackage ? { packageId: selectedPackage.id } : {}),
         note: note.trim() || undefined,
         startNow: false,
       });
@@ -173,6 +243,11 @@ export function MembershipEnrollView() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function goBack() {
+    const prev = activeSteps[stepIndex - 1];
+    if (prev) setStep(prev);
   }
 
   if (loading) {
@@ -192,11 +267,16 @@ export function MembershipEnrollView() {
             ← {t("back")}
           </Link>
           <h1 className="account-page-head__title">{t("enrollTitle")}</h1>
+          {selectedPackage ? (
+            <p className="account-page-head__sub">
+              {t("enrollPackageSelected").replace("{name}", selectedPackage.name)}
+            </p>
+          ) : null}
         </div>
       </header>
 
       <div className="enroll-steps" aria-label={t("enrollProgress")}>
-        {STEPS.map((s, i) => (
+        {activeSteps.map((s, i) => (
           <span
             key={s}
             className={`enroll-steps__item ${i <= stepIndex ? "enroll-steps__item--done" : ""} ${i === stepIndex ? "enroll-steps__item--active" : ""}`}
@@ -265,19 +345,28 @@ export function MembershipEnrollView() {
       {step === "basket" && setup ? (
         <section className="enroll-panel">
           <h2>{t("enrollStepBasket")}</h2>
+          {selectedPackage ? <p className="enroll-panel__hint">{t("enrollPackageHint")}</p> : null}
           <ul className="enroll-products">
             {setup.products.map((p) => {
               const qty = basket[p.id] ?? 0;
+              const minQty = minBasket[p.id] ?? 0;
+              const canReduce = qty > minQty;
               return (
-                <li key={p.id} className="enroll-product">
+                <li key={p.id} className={`enroll-product ${minQty > 0 ? "enroll-product--base" : ""}`}>
                   <div>
                     <strong>{p.name}</strong>
+                    {minQty > 0 ? <small className="enroll-product__base-tag">{t("packageBaseItem")}</small> : null}
                     <small>
                       {formatMoney(p.price)} / {unitLabel(p.unit, locale)}
                     </small>
                   </div>
                   <div className="enroll-product__qty">
-                    <button type="button" onClick={() => setQty(p.id, -1)} aria-label={t("reduceQty")}>
+                    <button
+                      type="button"
+                      onClick={() => setQty(p.id, -1)}
+                      disabled={!canReduce}
+                      aria-label={t("reduceQty")}
+                    >
                       −
                     </button>
                     <span>{qty}</span>
@@ -336,7 +425,7 @@ export function MembershipEnrollView() {
           <button
             type="button"
             className="landing-btn landing-btn--ghost"
-            onClick={() => setStep(STEPS[stepIndex - 1])}
+            onClick={goBack}
             disabled={submitting}
           >
             {t("back")}

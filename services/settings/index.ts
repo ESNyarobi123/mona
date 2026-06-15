@@ -3,12 +3,15 @@ import { normalizeTanzaniaPhone } from "@monana/utils";
 
 export const SETTING_KEYS = {
   ADMIN_WHATSAPP: "admin_whatsapp_number",
+  /** Customer-facing bot number — auto-saved when QR is scanned */
+  BOT_WHATSAPP: "bot_whatsapp_number",
   LIPA_NAMBA: "lipa_namba",
   LIPA_NAMBA_NAME: "lipa_namba_name",
 } as const;
 
 export type PlatformSettings = {
   adminWhatsappNumber: string;
+  botWhatsappNumber: string;
   lipaNamba: string;
   lipaNambaName: string;
   botUrl: string;
@@ -21,8 +24,9 @@ async function getDbValue(key: string): Promise<string | null> {
 
 /** Merged: DB overrides, then .env fallback */
 export async function getPlatformSettings(): Promise<PlatformSettings> {
-  const [adminDb, lipaDb, lipaNameDb] = await Promise.all([
+  const [adminDb, botDb, lipaDb, lipaNameDb] = await Promise.all([
     getDbValue(SETTING_KEYS.ADMIN_WHATSAPP),
+    getDbValue(SETTING_KEYS.BOT_WHATSAPP),
     getDbValue(SETTING_KEYS.LIPA_NAMBA),
     getDbValue(SETTING_KEYS.LIPA_NAMBA_NAME),
   ]);
@@ -30,10 +34,27 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
   return {
     adminWhatsappNumber:
       adminDb ?? process.env.ADMIN_WHATSAPP_NUMBER ?? "",
+    botWhatsappNumber:
+      botDb ?? process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "",
     lipaNamba: lipaDb ?? process.env.LIPA_NAMBA ?? "",
     lipaNambaName: lipaNameDb ?? process.env.LIPA_NAMBA_NAME ?? "MONANA",
     botUrl: process.env.BOT_URL ?? "http://localhost:4000",
   };
+}
+
+/** Persist linked bot number so customer links work even when bot restarts. */
+export async function syncBotWhatsappNumber(phone: string | null | undefined): Promise<void> {
+  const normalized = phone?.trim() ? normalizeTanzaniaPhone(phone) : "";
+  if (!normalized || normalized.length < 12) return;
+
+  const current = await getDbValue(SETTING_KEYS.BOT_WHATSAPP);
+  if (current === normalized) return;
+
+  await prisma.systemSetting.upsert({
+    where: { key: SETTING_KEYS.BOT_WHATSAPP },
+    create: { key: SETTING_KEYS.BOT_WHATSAPP, value: normalized },
+    update: { value: normalized },
+  });
 }
 
 export async function getAdminWhatsappNumber(): Promise<string | null> {
@@ -84,3 +105,12 @@ export async function updatePlatformSettings(input: {
   await Promise.all(upserts);
   return getPlatformSettings();
 }
+
+export {
+  DEFAULT_LANDING_TICKER_SETTINGS,
+  LANDING_TICKER_KEY,
+  displayOrderCount,
+  getLandingTickerSettings,
+  updateLandingTickerSettings,
+  type LandingTickerSettings,
+} from "./landing";

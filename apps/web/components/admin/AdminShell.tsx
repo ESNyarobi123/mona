@@ -41,6 +41,7 @@ export function AdminShell({
         label: t("navMainMenu"),
         items: [
           { href: "/admin", label: t("overview"), icon: <IconDashboard />, exact: true },
+          { href: "/admin/landing", label: t("landingPage"), icon: <IconSparkle /> },
           { href: "/admin/whatsapp", label: t("whatsapp"), icon: <IconWhatsApp /> },
           { href: "/admin/orders", label: t("orders"), icon: <IconOrders /> },
           { href: "/admin/payments", label: t("payments"), icon: <IconPayments /> },

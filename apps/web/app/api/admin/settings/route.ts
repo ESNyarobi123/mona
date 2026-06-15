@@ -1,5 +1,5 @@
 import { platformSettingsSchema } from "@monana/types";
-import { getPlatformSettings, updatePlatformSettings } from "@monana/settings";
+import { getPlatformSettings, syncBotWhatsappNumber, updatePlatformSettings } from "@monana/settings";
 import { fetchBotHealth, fetchBotStatus } from "../../../../lib/bot-client";
 import { handle, ok, parseBody } from "../../../../lib/api";
 import { requireAdmin } from "../../../../lib/auth";
@@ -11,6 +11,9 @@ export function GET(req: Request) {
     const settings = await getPlatformSettings();
     const botOnline = await fetchBotHealth();
     const botStatus = botOnline ? await fetchBotStatus() : null;
+    if (botStatus?.connected && botStatus.phone) {
+      void syncBotWhatsappNumber(botStatus.phone);
+    }
     return ok({ settings, bot: { online: botOnline, status: botStatus } });
   });
 }

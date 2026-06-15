@@ -7,6 +7,7 @@ import { clearSession, getStoredUser, type StoredUser } from "../../lib/admin-ap
 import { useAppLocale } from "../providers/AppLocaleProvider";
 import { CartNavButton } from "../customer/CartNavButton";
 import { LanguageSwitch } from "../shared/LanguageSwitch";
+import { MonanaLogo } from "../brand/MonanaLogo";
 
 export function MonanaHeader({ variant = "app" }: { variant?: "landing" | "app" }) {
   const pathname = usePathname();
@@ -47,8 +48,7 @@ export function MonanaHeader({ variant = "app" }: { variant?: "landing" | "app" 
     <header className="landing-header">
       <div className="landing-header__inner">
         <Link href={logoHref} className="landing-logo" title={user ? t("navAccount") : "Monana"}>
-          <span className="landing-logo__icon">🔥</span>
-          Monana
+          <MonanaLogo variant="full" height={44} priority />
         </Link>
 
         <nav className="landing-nav" aria-label="Main">

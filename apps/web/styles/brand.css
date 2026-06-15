@@ -1,0 +1,48 @@
+/* Monana brand assets */
+.monana-logo {
+  display: block;
+  flex-shrink: 0;
+  height: auto;
+  max-width: 100%;
+}
+
+.monana-logo--mark {
+  border-radius: 50%;
+  box-shadow: 0 4px 14px rgba(46, 107, 46, 0.22);
+}
+
+.monana-logo--full {
+  width: auto;
+  object-fit: contain;
+}
+
+.landing-logo .monana-logo--full {
+  height: 2.75rem;
+  width: auto;
+}
+
+.landing-logo .monana-logo--mark {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.auth-split__brand .monana-logo--mark {
+  width: 2.75rem;
+  height: 2.75rem;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+
+.admin-sidebar-brand .monana-logo--mark {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.landing-footer__brand .monana-logo--full {
+  height: 2.5rem;
+  width: auto;
+}
+
+.bot-showcase-brand .monana-logo--mark {
+  width: 1.75rem;
+  height: 1.75rem;
+}

@@ -1,6 +1,7 @@
 import { getBotContent } from "@monana/bot-content";
-import { getPlatformSettings } from "@monana/settings";
+import { getPlatformSettings, syncBotWhatsappNumber } from "@monana/settings";
 import { parseLocale, type AppLocale } from "@monana/i18n";
+import { normalizeTanzaniaPhone, whatsAppUrlFromPhone } from "@monana/utils";
 import { fetchBotHealth, fetchBotStatus } from "./bot-client";
 
 export type BotShowcaseData = {
@@ -44,11 +45,16 @@ export async function getBotShowcase(localeInput?: string): Promise<BotShowcaseD
     getPlatformSettings(),
   ]);
 
-  const linkedPhone =
-    botStatus?.connected && botStatus.phone ? botStatus.phone : null;
-  /** Optional public fallback — never expose admin setup UI to customers */
-  const envPhone = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") || null;
-  const phone = linkedPhone ?? envPhone;
+  const livePhone =
+    botStatus?.connected && botStatus.phone
+      ? normalizeTanzaniaPhone(botStatus.phone)
+      : null;
+  if (livePhone) void syncBotWhatsappNumber(livePhone);
+
+  const storedPhone = settings.botWhatsappNumber?.trim()
+    ? normalizeTanzaniaPhone(settings.botWhatsappNumber)
+    : null;
+  const phone = livePhone ?? storedPhone;
 
   const lipa = settings.lipaNamba?.trim() || "XXXXXXX";
   const lipaName = settings.lipaNambaName?.trim() || "MONANA";
@@ -59,7 +65,7 @@ export async function getBotShowcase(localeInput?: string): Promise<BotShowcaseD
     connected: Boolean(botOnline && botStatus?.connected),
     phone,
     phoneDisplay: phone ? formatPhoneDisplay(phone) : null,
-    whatsappUrl: phone ? `https://wa.me/${phone.replace(/\D/g, "")}` : null,
+    whatsappUrl: whatsAppUrlFromPhone(phone),
     menu: {
       welcome: content.welcome,
       groups: content.groups.map((g) => ({

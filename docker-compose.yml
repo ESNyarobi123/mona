@@ -49,7 +49,7 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-monana}?schema=public
       AUTH_SECRET: ${AUTH_SECRET:?Set AUTH_SECRET in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
-      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://178.104.240.204}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://monanafood.co.tz}
       API_BASE_URL: ${API_BASE_URL:-http://web:3000/api}
       BOT_URL: http://bot:4000
       ADMIN_WHATSAPP_NUMBER: ${ADMIN_WHATSAPP_NUMBER:-}
@@ -57,6 +57,7 @@ services:
       LIPA_NAMBA_NAME: ${LIPA_NAMBA_NAME:-MONANA}
       CRON_SECRET: ${CRON_SECRET:-}
       NEXT_PUBLIC_WHATSAPP_NUMBER: ${NEXT_PUBLIC_WHATSAPP_NUMBER:-}
+      CATALOG_UPLOAD_DIR: /app/apps/web/public/uploads/catalog
     ports:
       - "127.0.0.1:${WEB_PORT:-3000}:3000"
     volumes:

@@ -33,9 +33,11 @@ function TickerItems({ data, locale }: { data: RestaurantSlotTickerData; locale:
           <span className="landing-ticker__pill-status">
             {slot.status === "OPEN" ? openLabel : closedLabel}
           </span>
-          <span className="landing-ticker__pill-orders">
-            {slot.orderCount} {ordersLabel}
-          </span>
+          {data.showOrderCounts !== false ? (
+            <span className="landing-ticker__pill-orders">
+              {slot.orderCount} {ordersLabel}
+            </span>
+          ) : null}
         </span>
       ))}
       <span className="landing-ticker__pill landing-ticker__pill--clock" aria-hidden>
@@ -55,7 +57,7 @@ export function RestaurantOrderTicker({ initial, locale = "en" }: Props) {
   useEffect(() => {
     const refresh = async () => {
       try {
-        const res = await fetch(`/api/restaurant/slots/status?locale=${locale}`);
+        const res = await fetch(`/api/restaurant/slots/status?locale=${locale}&landingBoost=1`);
         const json = await res.json();
         if (json.success && json.data) setData(json.data);
       } catch {

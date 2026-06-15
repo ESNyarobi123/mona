@@ -1,3 +1,5 @@
+import { jidToMsisdn } from "@monana/utils";
+
 /** Shared bot connection state for HTTP /status and /qr endpoints */
 export type BotConnectionState =
   | "starting"
@@ -28,7 +30,7 @@ export function setConnectedJid(jid: string | null) {
 }
 
 export function getBotState() {
-  const phone = connectedJid?.split("@")[0]?.replace(/\D/g, "") ?? null;
+  const phone = jidToMsisdn(connectedJid);
   return {
     state,
     connected: state === "connected",

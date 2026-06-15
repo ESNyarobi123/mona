@@ -35,7 +35,7 @@ export default function RestaurantSlotsPage() {
 
   function load(silent = false) {
     if (!silent) setLoading(true);
-    apiGet<SlotPayload>(`/api/restaurant/slots/status?locale=${locale}`)
+    apiGet<SlotPayload>(`/api/restaurant/slots/status?locale=${locale}&realCounts=1`)
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : t("error")))
       .finally(() => {

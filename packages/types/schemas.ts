@@ -134,6 +134,17 @@ export const platformSettingsSchema = z.object({
   lipaNambaName: z.string().min(1).optional(),
 });
 
+export const landingTickerSettingsSchema = z.object({
+  showOrderCounts: z.boolean().optional(),
+  orderBoostBySlot: z
+    .object({
+      BREAKFAST: z.number().int().min(0).max(9999).optional(),
+      LUNCH: z.number().int().min(0).max(9999).optional(),
+      DINNER: z.number().int().min(0).max(9999).optional(),
+    })
+    .optional(),
+});
+
 export const hotPickModeSchema = z.enum(["AUTO", "MANUAL"]);
 
 export const hotProductsConfigSchema = z.object({
@@ -270,6 +281,7 @@ export const enrollMembershipSchema = z
     /** Lazima kwa MONTHLY — siku ya mwezi (1–28) */
     preferredDayOfMonth: z.coerce.number().int().min(1).max(28).optional(),
     defaultBasket: defaultBasketSchema,
+    packageId: z.string().min(1).optional(),
     note: z.string().optional(),
     startNow: z.boolean().default(false),
   })
@@ -293,6 +305,7 @@ export const enrollMembershipSchema = z
 export const membershipPreviewSchema = z.object({
   plan: z.enum(["WEEKLY", "MONTHLY"]),
   defaultBasket: defaultBasketSchema,
+  packageId: z.string().min(1).optional(),
 });
 
 export const menuItemSchema = z.object({

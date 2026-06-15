@@ -6,7 +6,11 @@ import {
   parsePackageItems,
   type PackageItem,
   pricingForSubscription,
+  pricingForPackageBasket,
+  assertBasketMeetsPackageMinimums,
   resolveLineItemsWithTotal,
+  frequencyForPackageKind,
+  validateSubscriptionSchedule,
 } from "./subscription-engine";
 import { getMembershipShellPackage, deliveryDayLabel } from "./customer-store";
 import { assertCanEnrollNewSubscription } from "./subscription-guard";
@@ -19,6 +23,7 @@ export async function enrollCustomerMembership(data: {
   preferredDayOfWeek?: number;
   preferredDayOfMonth?: number;
   defaultBasket: PackageItem[];
+  packageId?: string;
   note?: string;
   startNow?: boolean;
 }) {
@@ -34,33 +39,59 @@ export async function enrollCustomerMembership(data: {
 
   const frequency: SubscriptionFrequency = data.plan;
   const planMeta = MEMBERSHIP_PLANS[data.plan];
-  const shell = await getMembershipShellPackage(data.plan);
 
-  const deliveriesPerMonth = data.plan === "MONTHLY" ? shell.deliveriesPerMonth : 1;
+  let packageId: string;
+  let deliveriesPerMonth: number;
+  let secondaryDayOfMonth: number | null;
+  let pricing: Awaited<ReturnType<typeof pricingForSubscription>>;
+
+  if (data.packageId) {
+    const pkg = await prisma.groceryPackage.findUnique({ where: { id: data.packageId } });
+    if (!pkg || !pkg.active || Number(pkg.price) <= 0) {
+      throw new Error("Kifurushi haipatikani au hauko hai");
+    }
+    const minimums = parsePackageItems(pkg.items);
+    if (!minimums.length) throw new Error("Kifurushi hiki halina bidhaa za msingi");
+    assertBasketMeetsPackageMinimums(data.defaultBasket, minimums);
+    if (frequencyForPackageKind(pkg.kind) !== data.plan) {
+      throw new Error("Mpango haukilingani na kifurushi");
+    }
+    validateSubscriptionSchedule(pkg, data);
+
+    packageId = pkg.id;
+    deliveriesPerMonth = pkg.kind === "MONTHLY_PANTRY" ? pkg.deliveriesPerMonth : 1;
+    secondaryDayOfMonth = data.plan === "MONTHLY" && deliveriesPerMonth >= 2 ? 15 : null;
+    pricing = await pricingForPackageBasket(pkg, data.defaultBasket);
+  } else {
+    const shell = await getMembershipShellPackage(data.plan);
+    packageId = shell.id;
+    deliveriesPerMonth = data.plan === "MONTHLY" ? shell.deliveriesPerMonth : 1;
+    secondaryDayOfMonth = data.plan === "MONTHLY" && deliveriesPerMonth >= 2 ? 15 : null;
+    pricing = await pricingForSubscription(data.plan, data.defaultBasket);
+  }
 
   const firstRun = computeNextRunAt({
     frequency,
     from: new Date(),
     preferredDayOfWeek: data.preferredDayOfWeek,
     preferredDayOfMonth: data.preferredDayOfMonth,
-    secondaryDayOfMonth: data.plan === "MONTHLY" && deliveriesPerMonth >= 2 ? 15 : null,
+    secondaryDayOfMonth,
     deliveriesPerMonth,
   });
 
   const scheduledFor = data.startNow ? new Date() : firstRun;
-  const pricing = await pricingForSubscription(data.plan, data.defaultBasket);
 
   const subscription = await prisma.grocerySubscription.create({
     data: {
       userId: data.userId,
-      packageId: shell.id,
+      packageId,
       frequency,
       status: "PENDING_PAYMENT",
       address: data.address,
       channel: data.channel ?? "WEB",
       preferredDayOfWeek: data.plan === "WEEKLY" ? data.preferredDayOfWeek : null,
       preferredDayOfMonth: data.plan === "MONTHLY" ? data.preferredDayOfMonth : null,
-      secondaryDayOfMonth: data.plan === "MONTHLY" && deliveriesPerMonth >= 2 ? 15 : null,
+      secondaryDayOfMonth,
       deliveriesPerMonth,
       defaultBasket: data.defaultBasket,
       note: data.note,

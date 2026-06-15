@@ -5,6 +5,7 @@ import {
   TZ_EAT,
   type MealSlotWindow,
 } from "./meal-slot-settings";
+import { displayOrderCount, getLandingTickerSettings } from "@monana/settings";
 
 export { DEFAULT_MEAL_SLOT_WINDOWS, TZ_EAT, type MealSlotWindow } from "./meal-slot-settings";
 export {
@@ -147,18 +148,27 @@ function startOfTodayEat(date = new Date()): Date {
 
 export type RestaurantSlotTickerItem = MealSlotDefinition & {
   orderCount: number;
+  /** Real orders today — only when requested (admin breakdown) */
+  realOrderCount?: number;
 };
 
 export type RestaurantSlotTickerData = {
   timeDisplay: string;
   timezone: string;
   slots: RestaurantSlotTickerItem[];
+  /** Whether landing ticker shows order counts */
+  showOrderCounts: boolean;
 };
 
 export async function getRestaurantSlotTicker(
   locale: "en" | "sw" = "en",
-  now = new Date()
+  now = new Date(),
+  opts?: { applyLandingBoost?: boolean; includeBreakdown?: boolean }
 ): Promise<RestaurantSlotTickerData> {
+  const applyBoost = opts?.applyLandingBoost !== false;
+  const includeBreakdown = opts?.includeBreakdown === true;
+  const landingSettings = applyBoost ? await getLandingTickerSettings() : null;
+
   const todayStart = startOfTodayEat(now);
   const { display: timeDisplay } = getLocalTimeParts(now);
   const windows = await getMealSlotWindows();
@@ -179,10 +189,23 @@ export async function getRestaurantSlotTicker(
     if (row.mealSlot) countBySlot.set(row.mealSlot, row._count._all);
   }
 
-  const slots = buildMealSlotDefinitions(windows, locale, now).map((def) => ({
-    ...def,
-    orderCount: countBySlot.get(def.slot) ?? 0,
-  }));
+  const slots = buildMealSlotDefinitions(windows, locale, now).map((def) => {
+    const real = countBySlot.get(def.slot) ?? 0;
+    const orderCount =
+      applyBoost && landingSettings
+        ? displayOrderCount(real, def.slot, landingSettings)
+        : real;
+    return {
+      ...def,
+      orderCount,
+      ...(includeBreakdown ? { realOrderCount: real } : {}),
+    };
+  });
 
-  return { timeDisplay, timezone: TZ_EAT, slots };
+  return {
+    timeDisplay,
+    timezone: TZ_EAT,
+    slots,
+    showOrderCounts: landingSettings?.showOrderCounts ?? true,
+  };
 }

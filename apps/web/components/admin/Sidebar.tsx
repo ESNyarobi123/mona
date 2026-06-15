@@ -7,6 +7,7 @@ import { clearSession, getStoredUser } from "../../lib/admin-api";
 import { userDisplayName, userInitials } from "../../lib/admin-dashboard";
 import { useAdminLocale } from "./AdminLocaleProvider";
 import { IconChevronLeft } from "./AdminIcons";
+import { MonanaLogo } from "../brand/MonanaLogo";
 
 export type NavItem = {
   href: string;
@@ -41,7 +42,7 @@ export function Sidebar({
     <aside className={`admin-sidebar${collapsed ? " admin-sidebar--collapsed" : ""}`}>
       <div className="admin-sidebar__top">
         <Link href="/admin" className="admin-sidebar-brand">
-          <span className="admin-sidebar-brand__mark">M</span>
+          <MonanaLogo variant="mark" height={36} />
           {!collapsed && (
             <span className="admin-sidebar-brand__text">
               <strong>Monana</strong>

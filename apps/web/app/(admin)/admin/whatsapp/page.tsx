@@ -12,6 +12,7 @@ import type { AdminMessageKey } from "../../../../lib/admin-i18n";
 type SettingsPayload = {
   settings: {
     adminWhatsappNumber: string;
+    botWhatsappNumber: string;
     lipaNamba: string;
     lipaNambaName: string;
     botUrl: string;
@@ -141,6 +142,7 @@ export default function AdminWhatsAppPage() {
 
   const statusTone = connected ? "success" : online ? "warning" : "danger";
   const statusIcon = connected ? "✅" : online ? "📱" : "⚠️";
+  const linkedPhone = status?.phone ?? payload?.settings.botWhatsappNumber ?? null;
 
   if (loading && !payload) {
     return <AdminLoading label={t("loading")} />;
@@ -176,8 +178,8 @@ export default function AdminWhatsAppPage() {
         />
         <AdminKpiCard
           label={t("linkedNumber")}
-          value={status?.phone ?? t("notLinked")}
-          tone={status?.phone ? "accent" : "default"}
+          value={linkedPhone ?? t("notLinked")}
+          tone={linkedPhone ? "accent" : "default"}
         />
         <AdminKpiCard
           label={t("bridgeUrl")}
@@ -227,7 +229,7 @@ export default function AdminWhatsAppPage() {
                 <div className="admin-wa-meta">
                   <div className="admin-wa-meta__row">
                     <span>{t("linkedNumber")}</span>
-                    <strong>{status?.phone ?? t("notLinked")}</strong>
+                    <strong>{linkedPhone ?? t("notLinked")}</strong>
                   </div>
                   <div className="admin-wa-meta__row">
                     <span>{t("bridgeUrl")}</span>

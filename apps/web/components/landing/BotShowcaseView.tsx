@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import type { BotShowcaseData } from "../../lib/bot-showcase";
 import { useAppLocale } from "../providers/AppLocaleProvider";
+import { MonanaLogo } from "../brand/MonanaLogo";
 
 type Props = { data: BotShowcaseData };
 
@@ -34,8 +35,8 @@ function WhatsAppChrome({ children, onlineLabel, messageLabel }: { children: Rea
         <span className="wa-topbar__back" aria-hidden>
           ‹
         </span>
-        <div className="wa-topbar__avatar" aria-hidden>
-          M
+        <div className="wa-topbar__avatar bot-showcase-brand" aria-hidden>
+          <MonanaLogo variant="mark" height={28} />
         </div>
         <div className="wa-topbar__info">
           <strong>Monana</strong>

@@ -83,7 +83,15 @@ export async function getMenuItemById(id: string) {
 }
 
 export async function deleteMenuItem(id: string) {
-  return prisma.menuItem.update({ where: { id }, data: { available: false } });
+  const item = await prisma.menuItem.findUnique({ where: { id } });
+  if (!item) throw new Error("Kipengele cha menyu hakipatikani");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.orderItem.updateMany({ where: { menuItemId: id }, data: { menuItemId: null } });
+    await tx.menuItem.delete({ where: { id } });
+  });
+
+  return { deleted: true };
 }
 
 export { enqueueKitchen, listKitchenQueue, updateKitchenStatus } from "./kitchen-queue";

@@ -3,6 +3,7 @@ import path from "path";
 import { randomBytes } from "crypto";
 import { handle, ok } from "../../../../lib/api";
 import { ApiError, requireAdmin } from "../../../../lib/auth";
+import { CATALOG_UPLOAD_URL_PREFIX, getCatalogUploadDir } from "../../../../lib/catalog-upload";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 const ALLOWED = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
@@ -36,12 +37,12 @@ export function POST(req: Request) {
             : "gif";
 
     const filename = `${Date.now()}-${randomBytes(6).toString("hex")}.${ext}`;
-    const dir = path.join(process.cwd(), "public", "uploads", "catalog");
+    const dir = getCatalogUploadDir();
     await mkdir(dir, { recursive: true });
 
     const buffer = Buffer.from(await file.arrayBuffer());
     await writeFile(path.join(dir, filename), buffer);
 
-    return ok({ url: `/uploads/catalog/${filename}` }, 201);
+    return ok({ url: `${CATALOG_UPLOAD_URL_PREFIX}${filename}` }, 201);
   });
 }

@@ -152,6 +152,35 @@ export async function pricingForSubscription(plan: "WEEKLY" | "MONTHLY", basket:
   };
 }
 
+export async function pricingForPackageBasket(
+  pkg: {
+    discountPercent?: { toString(): string } | number | null;
+    freeDelivery?: boolean;
+  },
+  basket: PackageItem[]
+) {
+  const { subtotal } = await resolveLineItemsWithTotal(basket);
+  const pct = Number(pkg.discountPercent ?? 0);
+  const discountAmount = Math.round(subtotal * (pct / 100));
+  return {
+    subtotal,
+    discountPercent: pct,
+    discountAmount,
+    total: subtotal - discountAmount,
+    freeDelivery: pkg.freeDelivery ?? false,
+  };
+}
+
+export function assertBasketMeetsPackageMinimums(basket: PackageItem[], minimums: PackageItem[]) {
+  const qtyByProduct = new Map(basket.map((b) => [b.productId, b.quantity]));
+  for (const min of minimums) {
+    const qty = qtyByProduct.get(min.productId) ?? 0;
+    if (qty < min.quantity) {
+      throw new Error("Huwezi kupunguza bidhaa za msingi za kifurushi");
+    }
+  }
+}
+
 async function pricingForDeliveryItems(
   sub: {
     defaultBasket: unknown;

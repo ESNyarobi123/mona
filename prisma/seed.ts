@@ -280,7 +280,7 @@ async function main() {
   for (const row of [
     { key: "LIPA_NAMBA", value: "1234567890" },
     { key: "LIPA_NAMBA_NAME", value: "MONANA FOOD & MARKET" },
-    { key: "WHATSAPP_SUPPORT", value: "255750599412" },
+    { key: "bot_whatsapp_number", value: "255750599412" },
   ]) {
     await prisma.systemSetting.upsert({
       where: { key: row.key },

@@ -57,7 +57,14 @@ export async function finishPaymentProof(phone: string, reference: string, reply
     token: session.data.token,
     botMenu: session.data.botMenu,
   };
-  await api.submitPayment(session.data.paymentId!, reference);
+
+  try {
+    await api.submitPayment(session.data.paymentId!, reference);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : botMessage(locale, "paymentRefRejected");
+    return reply(`❌ ${message}`);
+  }
+
   patchSession(phone, "MENU", {
     ...keep,
     cart: [],

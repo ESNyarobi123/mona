@@ -8,6 +8,6 @@ export function POST(req: Request) {
   return handle(async () => {
     const locale = parseLocale(new URL(req.url).searchParams.get("locale"));
     const input = await parseBody(req, membershipPreviewSchema);
-    return ok(await previewMembershipBasket(input.plan, input.defaultBasket, locale));
+    return ok(await previewMembershipBasket(input.plan, input.defaultBasket, locale, input.packageId));
   });
 }

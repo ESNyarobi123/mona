@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { WhatsAppDirectLink } from "../shared/WhatsAppDirectLink";
 import { useAppLocale } from "../providers/AppLocaleProvider";
+import { MonanaLogo } from "../brand/MonanaLogo";
 
 export function SiteFooter() {
   const { t } = useAppLocale();
@@ -11,7 +12,9 @@ export function SiteFooter() {
     <footer className="landing-footer">
       <div className="landing-footer__inner">
         <div className="landing-footer__brand-col">
-          <div className="landing-footer__brand">🔥 Monana</div>
+          <Link href="/" className="landing-footer__brand">
+            <MonanaLogo variant="full" height={40} />
+          </Link>
           <p className="landing-footer__tagline">{t("footerTagline")}</p>
         </div>
 
@@ -56,7 +59,7 @@ export function SiteFooter() {
                 <WhatsAppDirectLink>{t("navWhatsapp")}</WhatsAppDirectLink>
               </li>
               <li>
-                <Link href="/admin">{t("footerAdmin")}</Link>
+                <Link href="/privacy">{t("footerPrivacy")}</Link>
               </li>
             </ul>
           </div>

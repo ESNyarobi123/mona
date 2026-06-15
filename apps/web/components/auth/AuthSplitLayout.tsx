@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { LanguageSwitch } from "../shared/LanguageSwitch";
 import { useAppLocale } from "../providers/AppLocaleProvider";
+import { MonanaLogo } from "../brand/MonanaLogo";
 
 const AUTH_HERO =
   "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1200&q=85&auto=format&fit=crop";
@@ -19,8 +20,8 @@ export function AuthSplitLayout({ children }: { children: ReactNode }) {
         <div className="auth-split__overlay" />
         <div className="auth-split__visual-content">
           <Link href="/" className="auth-split__brand">
-            <span className="auth-split__brand-icon">🔥</span>
-            Monana
+            <MonanaLogo variant="mark" height={44} priority />
+            <span className="auth-split__brand-name">Monana</span>
           </Link>
           <h2 className="auth-split__tagline">
             {t("authTagline")} <span>{t("authTaglineAccent")}</span>

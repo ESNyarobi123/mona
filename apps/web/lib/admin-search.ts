@@ -12,6 +12,7 @@ export function resolveAdminSearchRoute(raw: string): { path: string; q: string 
   if (/(watumiaji|user|customer|mteja)/.test(lower)) return { path: "/admin/users", q };
   if (/^\+?\d[\d\s-]{7,}$/.test(q.replace(/\s/g, ""))) return { path: "/admin/users", q };
   if (/(whatsapp|bot)/.test(lower)) return { path: "/admin/whatsapp", q };
+  if (/(landing|homepage|home page|ticker|mwanzo)/.test(lower)) return { path: "/admin/landing", q };
   if (/(grocery|soko|bidhaa)/.test(lower)) return { path: "/admin/grocery", q };
   if (/restaurant/.test(lower)) return { path: "/admin/restaurant", q };
 
