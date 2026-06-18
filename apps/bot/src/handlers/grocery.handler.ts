@@ -37,6 +37,7 @@ export async function showGroceryHub(phone: string, reply: Reply) {
     patchSession(phone, "MANAGING_SUBSCRIPTION", {
       activeSubscriptionId: home.subscription.id,
       pendingSubOrderId: home.pendingPayment.orderId,
+      intentId: home.pendingPayment.intentId,
     });
     return reply(buildManageMenu(phone, home, locale));
   }
@@ -146,15 +147,19 @@ export async function handlePackageChoice(phone: string, choice: string, reply: 
   const pkg = packages[index];
   if (!pkg) return reply(withBack(phone, botMessage(locale, "groceryChoosePackage")));
 
+  const setup = await api.getMembershipSetup(locale);
+  const isWeekly = pkg.kind === "WEEKLY_BASKET" || pkg.frequency === "WEEKLY";
+
   patchSession(phone, "CHOOSING_PACKAGE_DAY", {
     selectedPackageId: pkg.id,
     selectedPackageKind: pkg.kind,
+    deliverySlots: isWeekly ? setup.deliveryDays?.weekly ?? [] : undefined,
   });
 
-  if (pkg.kind === "WEEKLY_BASKET" || pkg.frequency === "WEEKLY") {
-    return reply(withBack(phone, msg(phone, "membershipChooseDayWeekly")));
+  if (isWeekly) {
+    return reply(withBack(phone, renderWeeklyDeliverySlots(phone, setup.deliveryDays?.weekly ?? [], locale)));
   }
-  return reply(withBack(phone, msg(phone, "membershipChooseDayMonthly")));
+  return reply(withBack(phone, msg(phone, "membershipChooseDayRecurring")));
 }
 
 export async function handlePackageDay(phone: string, input: string, reply: Reply) {
@@ -165,24 +170,24 @@ export async function handlePackageDay(phone: string, input: string, reply: Repl
   if (!pkgId) return reply(msg(phone, "fallback"));
 
   let preferredDayOfWeek: number | undefined;
-  let preferredDayOfMonth: number | undefined;
+  let scheduledDeliveryDate: string | undefined;
 
   if (kind === "WEEKLY_BASKET" || kind === "WEEKLY") {
-    const dayMap: Record<string, number> = { "1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6 };
-    const dow = dayMap[input];
-    if (dow == null) return reply(msg(phone, "membershipChooseDayWeekly"));
-    preferredDayOfWeek = dow;
+    const slots = session.data.deliverySlots ?? [];
+    const slot = slots[Number(input) - 1];
+    if (!slot) return reply(withBack(phone, renderWeeklyDeliverySlots(phone, slots, locale)));
+    preferredDayOfWeek = slot.dayOfWeek;
+    scheduledDeliveryDate = slot.date;
   } else {
-    const dom = Number(input);
-    if (!Number.isInteger(dom) || dom < 1 || dom > 28) {
-      return reply(msg(phone, "membershipChooseDayMonthly"));
-    }
-    preferredDayOfMonth = dom;
+    const dayMap: Record<string, number> = { "1": 3, "2": 6 };
+    const dow = dayMap[input];
+    if (dow == null) return reply(withBack(phone, msg(phone, "membershipChooseDayRecurring")));
+    preferredDayOfWeek = dow;
   }
 
   patchSession(phone, "ASK_PACKAGE_ADDRESS", {
     preferredDayOfWeek,
-    preferredDayOfMonth,
+    scheduledDeliveryDate,
   });
   return reply(msg(phone, "addressHint"));
 }
@@ -190,7 +195,7 @@ export async function handlePackageDay(phone: string, input: string, reply: Repl
 export async function handlePackageAddress(phone: string, address: string, reply: Reply) {
   const session = getSession(phone);
   const locale = sessionLocale(phone);
-  const { userId, selectedPackageId, preferredDayOfWeek, preferredDayOfMonth, groceryPackages } = session.data;
+  const { userId, selectedPackageId, preferredDayOfWeek, scheduledDeliveryDate, groceryPackages } = session.data;
   if (!userId || !selectedPackageId) return reply(msg(phone, "fallback"));
 
   const pkgMeta = groceryPackages?.find((p) => p.id === selectedPackageId);
@@ -201,7 +206,7 @@ export async function handlePackageAddress(phone: string, address: string, reply
       packageId: selectedPackageId,
       address,
       preferredDayOfWeek,
-      preferredDayOfMonth,
+      scheduledDeliveryDate,
       startNow: true,
     });
 
@@ -210,11 +215,22 @@ export async function handlePackageAddress(phone: string, address: string, reply
         ? locale === "sw"
           ? `Kila ${dayOfWeekLabel(preferredDayOfWeek, "sw")}`
           : `Every ${dayOfWeekLabel(preferredDayOfWeek, "en")}`
-        : preferredDayOfMonth != null
-          ? locale === "sw"
-            ? `Tarehe ${preferredDayOfMonth} kwa mwezi`
-            : `Day ${preferredDayOfMonth} of each month`
-          : "";
+        : "";
+
+    if (result.checkoutIntentId) {
+      const heading = botMessage(locale, "groceryPackageEnrolled", {
+        name: pkgMeta?.name ?? "Package",
+        schedule,
+      });
+      return sendPaymentRequest(
+        phone,
+        result.checkoutIntentId,
+        Number(result.pricing?.total ?? pkgMeta?.price ?? 0),
+        reply,
+        heading,
+        { isIntent: true }
+      );
+    }
 
     if (result.firstOrder && result.firstPayment) {
       const heading = botMessage(locale, "groceryPackageEnrolled", {
@@ -241,7 +257,23 @@ export async function handleManageSubscription(phone: string, choice: string, re
 
   if (home.pendingPayment && choice === "1") {
     const amount = Number(home.pendingPayment.amount);
-    return sendPaymentRequest(phone, home.pendingPayment.orderId, amount, reply, botMessage(locale, "subscriptionPendingPay"));
+    if (home.pendingPayment.intentId) {
+      return sendPaymentRequest(
+        phone,
+        home.pendingPayment.intentId,
+        amount,
+        reply,
+        botMessage(locale, "subscriptionPendingPay"),
+        { isIntent: true }
+      );
+    }
+    return sendPaymentRequest(
+      phone,
+      home.pendingPayment.orderId!,
+      amount,
+      reply,
+      botMessage(locale, "subscriptionPendingPay")
+    );
   }
 
   if (choice === "1" && !home.pendingPayment) {
@@ -293,6 +325,36 @@ async function handleManagePause(phone: string, reply: Reply) {
   await api.pauseSubscription(activeSubscriptionId, 1);
   patchSession(phone, "MENU", { activeSubscriptionId: undefined });
   return reply(botMessage(locale, "subscriptionPaused", { weeks: 1 }));
+}
+
+function renderWeeklyDeliverySlots(
+  phone: string,
+  slots: { label: string; weekLabel: string }[],
+  locale: AppLocale
+) {
+  const title =
+    locale === "sw"
+      ? "📅 *Siku ya kupokea mzigo wiki hii?*\n(Jumatano au Jumamosi pekee)\n"
+      : "📅 *Delivery day this week?*\n(Wednesday or Saturday only)\n";
+  if (!slots.length) {
+    return (
+      title +
+      (locale === "sw"
+        ? "Hakuna siku zilizobaki kwa sasa. Jaribu tena baadaye."
+        : "No slots available right now. Try again later.")
+    );
+  }
+  const lines = slots.map((slot, i) => `${i + 1}. ${slot.weekLabel} — ${slot.label}`);
+  const prompt = locale === "sw" ? "Andika namba." : "Reply with a number.";
+  return `${title}${lines.join("\n")}\n\n${prompt}\n${botMessage(locale, "backHint")}`;
+}
+
+export function renderWeeklyDeliverySlotsForOnDemand(
+  phone: string,
+  slots: { label: string; weekLabel: string }[],
+  locale: AppLocale
+) {
+  return renderWeeklyDeliverySlots(phone, slots, locale);
 }
 
 function renderProductList(

@@ -5671,6 +5671,31 @@
   font-weight: 700;
 }
 
+.checkout-payment-timing {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.checkout-payment-timing__option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  border: 1px solid var(--mn-border);
+  background: var(--mn-bg-white);
+  cursor: pointer;
+}
+
+.checkout-payment-timing__option--active {
+  border-color: var(--mn-orange);
+  background: rgba(255, 107, 44, 0.08);
+}
+
+.checkout-payment-timing__option input {
+  margin-top: 0.2rem;
+}
+
 .enroll-products {
   list-style: none;
   margin: 0;

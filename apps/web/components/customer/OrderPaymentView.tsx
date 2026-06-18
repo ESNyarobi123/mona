@@ -8,6 +8,8 @@ import { formatMoney } from "../../lib/format";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 
 type PaymentInfo = {
+  kind?: "CHECKOUT_INTENT" | "ORDER";
+  intentId?: string;
   payment: {
     id: string;
     status: string;
@@ -22,6 +24,15 @@ type PaymentInfo = {
     steps: string;
   };
   qrDataUrl: string;
+};
+
+type CheckoutInfo = {
+  id: string;
+  kind: "CHECKOUT_INTENT";
+  module: "RESTAURANT" | "GROCERY";
+  total: string | number;
+  status: string;
+  paymentToken: string;
 };
 
 type OrderInfo = {
@@ -50,6 +61,7 @@ const MODULE_UI = {
 export function OrderPaymentView({ orderId }: { orderId: string }) {
   const router = useRouter();
   const { locale, t } = useAppLocale();
+  const [checkout, setCheckout] = useState<CheckoutInfo | null>(null);
   const [order, setOrder] = useState<OrderInfo | null>(null);
   const [payInfo, setPayInfo] = useState<PaymentInfo | null>(null);
   const [reference, setReference] = useState("");
@@ -59,25 +71,37 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
   const [copied, setCopied] = useState(false);
   const [done, setDone] = useState(false);
 
+  const isIntent = !!checkout;
+  const module = checkout?.module ?? order?.module ?? "GROCERY";
+  const total = checkout?.total ?? order?.total ?? 0;
+  const cfg = MODULE_UI[module];
+
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const o = await apiGet<OrderInfo>(`/api/orders/${orderId}`);
-      setOrder(o);
+      try {
+        const o = await apiGet<OrderInfo>(`/api/orders/${orderId}`);
+        setOrder(o);
+        setCheckout(null);
 
-      if (o.payment?.status === "PAID") {
-        setDone(true);
-        setLoading(false);
+        if (o.payment?.status === "PAID" || o.payment?.status === "AWAITING_CONFIRMATION") {
+          setDone(true);
+          setLoading(false);
+          return;
+        }
+
+        const pay = await apiPost<PaymentInfo>(`/api/payments?locale=${locale}`, { orderId: o.id });
+        setPayInfo(pay);
         return;
-      }
-      if (o.payment?.status === "AWAITING_CONFIRMATION") {
-        setDone(true);
-        setLoading(false);
-        return;
+      } catch {
+        // not an order — try checkout intent
       }
 
-      const pay = await apiPost<PaymentInfo>(`/api/payments?locale=${locale}`, { orderId: o.id });
+      const intent = await apiGet<CheckoutInfo>(`/api/checkout-intents/${orderId}`);
+      setCheckout(intent);
+      setOrder(null);
+      const pay = await apiPost<PaymentInfo>(`/api/payments?locale=${locale}`, { intentId: intent.id });
       setPayInfo(pay);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("loadFailed"));
@@ -89,8 +113,6 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
   useEffect(() => {
     load();
   }, [load]);
-
-  const cfg = order ? MODULE_UI[order.module] : MODULE_UI.GROCERY;
 
   async function handleCopy() {
     if (!payInfo?.instructions.lipaNamba) return;
@@ -114,14 +136,14 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
     setSubmitting(true);
     setError("");
     try {
-      await apiPost("/api/payments/submit", {
-        paymentId: payInfo.payment.id,
-        reference: ref,
-      });
+      const result = await apiPost<{ orderId: string }>("/api/payments/submit", isIntent
+        ? { intentId: orderId, reference: ref }
+        : { paymentId: payInfo.payment.id, reference: ref });
       setDone(true);
       setTimeout(() => {
         router.push(cfg.ordersHref);
       }, 2500);
+      void result;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Imeshindwa kutuma");
     } finally {
@@ -140,7 +162,7 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
     );
   }
 
-  if (!order) {
+  if (!order && !checkout) {
     return (
       <div className="payment-page">
         <div className="account-empty">
@@ -153,10 +175,13 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
     );
   }
 
-  const orderRef = order.id.slice(-6).toUpperCase();
+  const orderRef = orderId.slice(-6).toUpperCase();
   const alreadySubmitted =
-    done && (order.payment?.status === "AWAITING_CONFIRMATION" || order.payment?.status === "PAID");
-  const fullyPaid = order.payment?.status === "PAID";
+    done &&
+    (isIntent ||
+      order?.payment?.status === "AWAITING_CONFIRMATION" ||
+      order?.payment?.status === "PAID");
+  const fullyPaid = order?.payment?.status === "PAID";
 
   return (
     <div className={`payment-page payment-page--${cfg.theme}`}>
@@ -168,7 +193,7 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
           <p className="payment-page__eyebrow">{t("payment")} · {cfg.label}</p>
           <h1 className="payment-page__title">{t("payTitle")}</h1>
           <p className="payment-page__sub">
-            {t("orderLabel")} #{orderRef} · {formatMoney(order.total)}
+            {isIntent ? t("payBeforeOrderSaved") : `${t("orderLabel")} #${orderRef}`} · {formatMoney(total)}
           </p>
         </div>
       </header>
@@ -192,7 +217,7 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
           <h2>{t("paymentReceived")}</h2>
           <p>
             {t("paymentReview")}{" "}
-            <strong>{order.payment?.status?.replace(/_/g, " ") ?? t("awaiting")}</strong>
+            <strong>{order?.payment?.status?.replace(/_/g, " ") ?? t("awaiting")}</strong>
           </p>
           <Link href={cfg.ordersHref} className="landing-btn landing-btn--navy">
             {t("viewYourOrders")}
@@ -265,7 +290,7 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
                   </div>
                 </label>
                 <p className="payment-confirm-form__ref-hint">
-                  {t("orderRefHint")} <strong>{payInfo.instructions.reference}</strong>
+                  {t("checkoutRefHint")}
                 </p>
                 {error ? <p className="auth-form__error">{error}</p> : null}
                 <button

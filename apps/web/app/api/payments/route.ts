@@ -1,13 +1,11 @@
 import { createPaymentSchema } from "@monana/types";
 import { createPaymentRequest, listPayments } from "@monana/payment";
-import { getPlatformSettings } from "@monana/settings";
-import { formatTZS, parsePagination } from "@monana/utils";
-import { parseLocale } from "@monana/i18n";
+import { getCheckoutIntent } from "@monana/orders";
+import { parsePagination } from "@monana/utils";
 import { prisma } from "@monana/db";
-import QRCode from "qrcode";
-import { buildLipaNambaQrPayload } from "../../../lib/lipa-qr";
+import { buildLipaPaymentInstructions } from "../../../lib/payment-instructions";
 import { handle, ok, parseBody } from "../../../lib/api";
-import { ApiError, getAuth, isBotChannel, requireAdmin, requireSelfAdminOrBot } from "../../../lib/auth";
+import { ApiError, getAuth, isBotChannel, requireAdmin } from "../../../lib/auth";
 
 // GET /api/payments — admin (paginated)
 export async function GET(req: Request) {
@@ -29,49 +27,73 @@ export async function GET(req: Request) {
   });
 }
 
-// POST /api/payments { orderId } — create Lipa Namba request
+// POST /api/payments { orderId | intentId } — Lipa Namba instructions
 export async function POST(req: Request) {
   return handle(async () => {
-    const { orderId } = await parseBody(req, createPaymentSchema);
+    const body = await parseBody(req, createPaymentSchema);
+    const locale = new URL(req.url).searchParams.get("locale");
+    const auth = getAuth(req);
+    if (!auth && !isBotChannel(req)) {
+      throw new ApiError("Ingia kwanza", 401);
+    }
+
+    if (body.intentId) {
+      const intent = await getCheckoutIntent(body.intentId);
+      if (!intent) throw new ApiError("Checkout haipatikani", 404);
+      if (intent.consumedAt) throw new ApiError("Malipo tayari yamewasilishwa", 409);
+      if (intent.expiresAt <= new Date()) {
+        throw new ApiError("Muda wa malipo umepita. Tengeneza oda mpya.", 410);
+      }
+      if (auth && auth.role !== "ADMIN" && auth.sub !== intent.userId) {
+        throw new ApiError("Huna ruhusa", 403);
+      }
+
+      const { instructions, qrDataUrl } = await buildLipaPaymentInstructions(
+        Number(intent.total),
+        intent.paymentToken,
+        locale
+      );
+
+      return ok(
+        {
+          kind: "CHECKOUT_INTENT" as const,
+          intentId: intent.id,
+          payment: {
+            id: intent.id,
+            status: "PENDING",
+            reference: intent.paymentToken,
+            amount: intent.total,
+          },
+          instructions,
+          qrDataUrl,
+        },
+        201
+      );
+    }
+
+    const orderId = body.orderId!;
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: { payment: true },
     });
     if (!order) throw new ApiError("Oda haipatikani", 404);
 
-    const auth = getAuth(req);
     if (auth && auth.role !== "ADMIN" && auth.sub !== order.userId) {
       throw new ApiError("Huna ruhusa", 403);
     }
-    if (!auth && !isBotChannel(req)) {
-      throw new ApiError("Ingia kwanza", 401);
-    }
 
     const payment = await createPaymentRequest(orderId);
-    const { lipaNamba, lipaNambaName } = await getPlatformSettings();
-    const lipa = lipaNamba || "XXXXXXX";
-    const lipaName = lipaNambaName || "MONANA";
-    const locale = parseLocale(new URL(req.url).searchParams.get("locale"));
-    const amount = formatTZS(Number(payment.amount));
-    const steps =
-      locale === "sw"
-        ? `Lipa ${amount} kwa Lipa Namba ${lipa} (${lipaName}), kisha tuma reference.`
-        : `Pay ${amount} to Lipa Namba ${lipa} (${lipaName}), then send your reference.`;
-
-    const qrPayload = buildLipaNambaQrPayload(lipa);
-    const qrDataUrl = await QRCode.toDataURL(qrPayload, { width: 280, margin: 2, errorCorrectionLevel: "M" });
+    const { instructions, qrDataUrl } = await buildLipaPaymentInstructions(
+      Number(payment.amount),
+      payment.reference ?? "",
+      locale
+    );
 
     return ok(
       {
+        kind: "ORDER" as const,
         payment,
-        instructions: {
-          lipaNamba: lipa,
-          name: lipaName,
-          amount,
-          reference: payment.reference,
-          steps,
-          qrPayload,
-        },
+        instructions,
         qrDataUrl,
       },
       201

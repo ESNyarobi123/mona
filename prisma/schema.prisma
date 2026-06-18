@@ -49,6 +49,11 @@ enum PaymentMethod {
   WALLET
 }
 
+enum PaymentTiming {
+  PAY_NOW
+  PAY_ON_DELIVERY
+}
+
 enum Channel {
   WEB
   WHATSAPP
@@ -130,6 +135,8 @@ model User {
   wallet        Wallet?
   payments      Payment[]
   subscriptions GrocerySubscription[]
+  restaurantSubscriptions RestaurantSubscription[]
+  checkoutIntents CheckoutIntent[]
 }
 
 model Wallet {
@@ -148,6 +155,9 @@ model Order {
   module    BusinessModule
   status    OrderStatus    @default(PENDING)
   channel   Channel        @default(WEB)
+  /// Sum of line items (before delivery)
+  subtotal  Decimal        @default(0) @db.Decimal(12, 2)
+  deliveryFee Decimal      @default(0) @db.Decimal(12, 2)
   total     Decimal        @db.Decimal(12, 2)
   address   String?
   note      String?
@@ -162,6 +172,9 @@ model Order {
   /// Admin override for delivery route grouping (else inferred from address)
   deliveryZoneId String?
   deliveryZone   DeliveryZone? @relation(fields: [deliveryZoneId], references: [id])
+  paymentTiming  PaymentTiming  @default(PAY_NOW)
+  /// Set when order is officially submitted (pay-now: on payment ref; pay-on-delivery: on admin approve)
+  submittedAt    DateTime?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
@@ -197,6 +210,26 @@ model Payment {
   reference String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt
+}
+
+/// Holds order data until customer submits a payment reference (no Order row yet).
+model CheckoutIntent {
+  id           String         @id @default(cuid())
+  userId       String
+  user         User           @relation(fields: [userId], references: [id])
+  module       BusinessModule
+  channel      Channel        @default(WEB)
+  total        Decimal        @db.Decimal(12, 2)
+  payload      Json
+  /// Shown on Lipa Namba screen (MNA-xxx) — not the customer's M-Pesa code
+  paymentToken String         @unique
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  orderId      String?        @unique
+  createdAt    DateTime       @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
 }
 
 model BotSession {
@@ -330,6 +363,8 @@ model DeliveryZone {
   nameSw    String?
   /// Lowercase keywords matched in normalized address text
   keywords  Json
+  /// Delivery fee when pricing mode is ZONE (TZS)
+  deliveryFee Decimal @default(0) @db.Decimal(12, 2)
   sortOrder Int      @default(0)
   active    Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -382,6 +417,34 @@ model GroceryPackingCheck {
 }
 
 // ===================== RESTAURANT MODULE =====================
+
+/// Restaurant membership — customer picks meal slots (B/L/D) and gets WhatsApp reminders when each window opens.
+model RestaurantSubscription {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id])
+  mealSlots   MealSlot[]
+  status      SubscriptionStatus @default(ACTIVE)
+  address     String?
+  channel     Channel            @default(WEB)
+  pausedUntil DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([userId, status])
+}
+
+/// One reminder per user/slot/day (EAT calendar date).
+model RestaurantSlotReminderLog {
+  id      String   @id @default(cuid())
+  userId  String
+  slot    MealSlot
+  eatDate String
+  sentAt  DateTime @default(now())
+
+  @@unique([userId, slot, eatDate])
+  @@index([eatDate, slot])
+}
 
 model Menu {
   id          String   @id @default(cuid())

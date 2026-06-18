@@ -40,6 +40,12 @@ type SubscriptionRow = {
   package?: { name: string };
 };
 
+type RestaurantMembershipRow = {
+  id: string;
+  status: string;
+  mealSlots: string[];
+};
+
 type OrdersResponse = OrderRow[] | { items: OrderRow[]; meta: { total: number } };
 
 function normalizeOrders(data: OrdersResponse) {
@@ -74,6 +80,7 @@ export function AccountDashboardView() {
   const [orders, setOrders] = useState<OrderRow[]>([]);
   const [orderTotal, setOrderTotal] = useState(0);
   const [subs, setSubs] = useState<SubscriptionRow[]>([]);
+  const [restaurantMembership, setRestaurantMembership] = useState<RestaurantMembershipRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -87,15 +94,21 @@ export function AccountDashboardView() {
         if (cancelled) return;
         setMe(profile);
 
-        const [rawOrders, rawSubs] = await Promise.all([
+        const [rawOrders, rawSubs, rawRestMembership] = await Promise.all([
           apiGet<OrdersResponse>(`/api/orders?userId=${profile.id}&limit=8`),
           apiGet<SubscriptionRow[]>(`/api/grocery/subscriptions?userId=${profile.id}`).catch(() => []),
+          apiGet<RestaurantMembershipRow[]>(`/api/restaurant/store/membership?userId=${profile.id}`).catch(
+            () => []
+          ),
         ]);
         if (cancelled) return;
         const { items, total } = normalizeOrders(rawOrders);
         setOrders(items);
         setOrderTotal(total);
         setSubs(rawSubs);
+        setRestaurantMembership(
+          rawRestMembership.find((m) => m.status === "ACTIVE" || m.status === "PAUSED") ?? null
+        );
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "Failed to load");
       } finally {
@@ -258,10 +271,41 @@ export function AccountDashboardView() {
           <section className="account-card account-card--membership">
             <div className="account-card__head">
               <div>
-                <h2>{t("membershipTitle")}</h2>
-                <p className="account-card__head-sub">{t("membershipSub")}</p>
+                <h2>{t("restaurantMembershipTitle")}</h2>
+                <p className="account-card__head-sub">{t("restaurantMembershipSub")}</p>
               </div>
-              <Link href="/account/membership">{t("membershipManage")}</Link>
+              <Link href="/account/restaurant/membership">{t("restaurantMembershipEnroll")}</Link>
+            </div>
+            <div className="account-membership-banner">
+              {restaurantMembership ? (
+                <>
+                  <p className="account-membership-banner__meta">
+                    {restaurantMembership.mealSlots
+                      .map((s) => SLOT_I18N[s]?.[locale] ?? s)
+                      .join(" · ")}
+                  </p>
+                  <Link href="/account/restaurant/membership" className="landing-btn landing-btn--ghost landing-btn--sm">
+                    {t("restaurantMembershipActive")}
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p>{t("restaurantMembershipNone")}</p>
+                  <Link href="/account/restaurant/membership/enroll" className="landing-btn landing-btn--navy landing-btn--sm">
+                    {t("restaurantMembershipEnroll")}
+                  </Link>
+                </>
+              )}
+            </div>
+          </section>
+
+          <section className="account-card account-card--membership">
+            <div className="account-card__head">
+              <div>
+                <h2>{t("subscriptionTitle")}</h2>
+                <p className="account-card__head-sub">{t("subscriptionSub")}</p>
+              </div>
+              <Link href="/account/subscription">{t("membershipManage")}</Link>
             </div>
             <div className="account-membership-banner">
               {activeSub ? (
@@ -280,14 +324,14 @@ export function AccountDashboardView() {
                     </p>
                   ) : null}
                   <p className="account-membership-banner__addr">📍 {activeSub.address}</p>
-                  <Link href="/account/membership" className="landing-btn landing-btn--ghost landing-btn--sm">
+                  <Link href="/account/subscription" className="landing-btn landing-btn--ghost landing-btn--sm">
                     {t("membershipManage")}
                   </Link>
                 </>
               ) : (
                 <>
                   <p>{t("membershipNone")}</p>
-                  <Link href="/account/membership/enroll" className="landing-btn landing-btn--orange">
+                  <Link href="/account/subscription/enroll" className="landing-btn landing-btn--orange">
                     {t("membershipEnroll")}
                   </Link>
                 </>

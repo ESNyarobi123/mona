@@ -104,6 +104,48 @@ export async function notifyAdminPaymentSubmitted(params: {
   );
 }
 
+export async function notifyAdminPayOnDeliveryOrder(params: {
+  id: string;
+  module: string;
+  channel: string;
+  total: number | string;
+  address?: string | null;
+  mealSlot?: string | null;
+  customer?: { name?: string | null; phone: string } | null;
+  items?: Array<{ name: string; quantity: number; price: number | string }>;
+}) {
+  const brand = moduleLabel(params.module as "RESTAURANT" | "GROCERY").title;
+  const lines =
+    params.items?.map((i) => `  • ${i.quantity}x ${i.name}`).join("\n") ?? "  (hakuna items)";
+  return notifyAdmin(
+    `📋 *Oda ya kulipia ukifika* #${shortId(params.id)}\n` +
+      `Huduma: ${brand}\n` +
+      `Mteja: ${params.customer?.name ?? "—"} (${params.customer?.phone ?? "?"})\n` +
+      `Bidhaa:\n${lines}\n` +
+      `Jumla: *${formatTZS(Number(params.total))}*\n` +
+      `Anwani: ${params.address ?? "—"}\n` +
+      `${params.mealSlot ? `Slot: ${params.mealSlot}\n` : ""}` +
+      `Channel: ${params.channel}\n\n` +
+      `⚠️ Oda haijawasilishwa — wasilisha mzigo, mteja atalipa na kutuma ombi la malipo.`
+  );
+}
+
+export async function notifyAdminPayOnDeliveryPaymentRequest(params: {
+  orderId: string;
+  amount: number | string;
+  reference: string;
+  customer?: { name?: string | null; phone: string } | null;
+}) {
+  return notifyAdmin(
+    `💳 *Ombi la malipo (lipa ukifika)*\n` +
+      `Oda: #${shortId(params.orderId)}\n` +
+      `Mteja: ${params.customer?.name ?? "—"} (${params.customer?.phone ?? "?"})\n` +
+      `Kiasi: *${formatTZS(Number(params.amount))}*\n` +
+      `Ref: ${params.reference}\n\n` +
+      `👉 Kukubali kuthibitisha oda. Kukataa = oda haitawasilishwa.`
+  );
+}
+
 export async function notifyAdminPaymentConfirmed(params: {
   orderId: string;
   amount: number | string;
@@ -119,6 +161,61 @@ export async function notifyAdminPaymentConfirmed(params: {
 }
 
 // ——— Customer alerts ———
+
+const SLOT_REMINDER_HEAD: Record<
+  "BREAKFAST" | "LUNCH" | "DINNER",
+  { en: string; sw: string; emoji: string }
+> = {
+  BREAKFAST: { en: "Breakfast", sw: "Asubuhi", emoji: "🌅" },
+  LUNCH: { en: "Lunch", sw: "Mchana", emoji: "☀️" },
+  DINNER: { en: "Dinner", sw: "Usiku", emoji: "🌙" },
+};
+
+/** WhatsApp reminder when a meal-slot window opens for restaurant members. */
+export async function notifyRestaurantMembershipSlotOpen(params: {
+  phone: string;
+  userId: string;
+  slot: "BREAKFAST" | "LUNCH" | "DINNER";
+  menuLines: string;
+  locale?: "en" | "sw";
+  menuItems: { id: string; name: string; price: string; unit?: string }[];
+}): Promise<boolean> {
+  const locale = params.locale === "sw" ? "sw" : "en";
+  const head = SLOT_REMINDER_HEAD[params.slot];
+  const title =
+    locale === "sw"
+      ? `${head.emoji} *Dirisha la ${head.sw} limefunguka!*`
+      : `${head.emoji} *${head.en} order window is open!*`;
+  const intro =
+    locale === "sw"
+      ? "Chagua chakula unachotaka kula muda huu:"
+      : "Pick what you'd like to eat for this meal:";
+  const footer =
+    locale === "sw"
+      ? "Andika *namba* ya chakula (mf. `1` au `2 x2`), kisha *maliza* ✅"
+      : "Reply with the *item number* (e.g. `1` or `2 x2`), then *done* ✅";
+
+  const text = `${title}\n\n${intro}\n\n${params.menuLines}\n\n${footer}`;
+
+  try {
+    const res = await fetch(`${BOT_URL}/membership-reminder`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        phone: params.phone,
+        text,
+        userId: params.userId,
+        mealSlot: params.slot,
+        menuItems: params.menuItems,
+      }),
+    });
+    const json = (await res.json().catch(() => ({}))) as { success?: boolean };
+    if (res.ok && json.success) return true;
+  } catch (err) {
+    console.error("[notifications] membership-reminder bridge failed:", err);
+  }
+  return sendMessage(params.phone, text);
+}
 
 export async function notifyCustomerOrderReceived(params: {
   phone: string;

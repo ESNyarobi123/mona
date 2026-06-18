@@ -2,6 +2,7 @@ import express from "express";
 import QRCode from "qrcode";
 import { sendText } from "./connection/whatsapp";
 import { getBotState } from "./connection/bot-state";
+import { patchSession } from "./services/session.service";
 
 export function startHttpServer(port = Number(process.env.BOT_PORT ?? 4000)) {
   const app = express();
@@ -36,6 +37,29 @@ export function startHttpServer(port = Number(process.env.BOT_PORT ?? 4000)) {
       return res.status(400).json({ success: false, error: "phone na text vinahitajika" });
     }
     try {
+      await sendText(phone, text);
+      res.json({ success: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "imeshindikana";
+      res.status(503).json({ success: false, error: message });
+    }
+  });
+
+  /** Prime session so member can reply with menu item numbers after slot-open reminder. */
+  app.post("/membership-reminder", async (req, res) => {
+    const { phone, text, userId, mealSlot, menuItems } = req.body ?? {};
+    if (!phone || !text || !mealSlot || !Array.isArray(menuItems)) {
+      return res.status(400).json({ success: false, error: "phone, text, mealSlot, menuItems vinahitajika" });
+    }
+    try {
+      patchSession(phone, "CHOOSING", {
+        module: "RESTAURANT",
+        mealSlot,
+        menuItems,
+        cart: [],
+        userId,
+        membershipMode: false,
+      });
       await sendText(phone, text);
       res.json({ success: true });
     } catch (err) {

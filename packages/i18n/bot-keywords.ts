@@ -20,6 +20,7 @@ export const BOT_KEYWORDS = {
   edit: ["edit basket", "edit", "hariri kikapu", "hariri"],
   language: ["language", "lang", "lugha"],
   register: ["register", "jisajili", "sajili"],
+  payDelivery: ["pay order", "lipa oda", "lipa oda yangu"],
   home: ["0", "rudi", "back", "home", "nyumbani", "mwanzo"],
 } as const;
 

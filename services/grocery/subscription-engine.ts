@@ -1,7 +1,14 @@
 import { prisma, Prisma, type Channel, type PackageKind, type SubscriptionFrequency } from "@monana/db";
 import { createPaymentRequest } from "@monana/payment";
 import { MEMBERSHIP_PLANS } from "@monana/utils";
+import {
+  assertGroceryDeliveryDay,
+  dayOfWeekInTz,
+  deliveryAtOnDate,
+  validateGroceryScheduledFor,
+} from "@monana/utils";
 import { assertCanEnrollNewSubscription } from "./subscription-guard";
+import { createCheckoutIntent } from "@monana/orders";
 
 export type PackageItem = { productId: string; quantity: number };
 
@@ -70,20 +77,34 @@ export function computeNextRunAt(input: ScheduleInput): Date {
     return next;
   }
 
-  const primary = input.preferredDayOfMonth ?? from.getDate();
-  const perMonth = input.deliveriesPerMonth ?? 1;
-  const secondary = perMonth >= 2 ? (input.secondaryDayOfMonth ?? 15) : null;
+  if (input.frequency === "MONTHLY") {
+    if (input.preferredDayOfWeek != null && input.preferredDayOfMonth == null) {
+      const dow = input.preferredDayOfWeek;
+      const current = next.getDay();
+      let daysUntil = dow - current;
+      if (daysUntil <= 0) daysUntil += 7;
+      if (daysUntil === 0 && next <= from) daysUntil = 7;
+      next.setDate(next.getDate() + daysUntil);
+      return next;
+    }
 
-  const candidates: Date[] = [];
-  for (let monthOffset = 0; monthOffset <= 2; monthOffset++) {
-    const y = from.getFullYear();
-    const m = from.getMonth() + monthOffset;
-    candidates.push(clampDayOfMonth(y, m, primary));
-    if (secondary != null) candidates.push(clampDayOfMonth(y, m, secondary));
+    const primary = input.preferredDayOfMonth ?? from.getDate();
+    const perMonth = input.deliveriesPerMonth ?? 1;
+    const secondary = perMonth >= 2 ? (input.secondaryDayOfMonth ?? 15) : null;
+
+    const candidates: Date[] = [];
+    for (let monthOffset = 0; monthOffset <= 2; monthOffset++) {
+      const y = from.getFullYear();
+      const m = from.getMonth() + monthOffset;
+      candidates.push(clampDayOfMonth(y, m, primary));
+      if (secondary != null) candidates.push(clampDayOfMonth(y, m, secondary));
+    }
+
+    const after = candidates.filter((d) => d > from).sort((a, b) => a.getTime() - b.getTime());
+    return after[0] ?? clampDayOfMonth(from.getFullYear(), from.getMonth() + 1, primary);
   }
 
-  const after = candidates.filter((d) => d > from).sort((a, b) => a.getTime() - b.getTime());
-  return after[0] ?? clampDayOfMonth(from.getFullYear(), from.getMonth() + 1, primary);
+  return next;
 }
 
 export function getOrderCutoffAt(nextRunAt: Date | null, cutoffHours: number): Date | null {
@@ -230,6 +251,40 @@ async function findCycleOrder(subscriptionId: string, scheduledFor: Date) {
     },
     include: { payment: true, items: true },
   });
+}
+
+/** Checkout intent for subscription first payment — order created when reference is submitted. */
+export async function createSubscriptionCheckoutIntent(
+  subscriptionId: string,
+  options?: { scheduledFor?: Date }
+) {
+  const sub = await prisma.grocerySubscription.findUnique({
+    where: { id: subscriptionId },
+    include: { package: true, user: true },
+  });
+  if (!sub) throw new Error("Usajili haupatikani");
+  if (sub.status === "CANCELLED") throw new Error("Usajili umesitishwa");
+
+  const scheduledFor = options?.scheduledFor ?? sub.nextRunAt ?? new Date();
+  const packageItems = deliveryItemsForSub(sub);
+  const lineItems = await resolvePackageLineItems(packageItems);
+  const pricing = await pricingForDeliveryItems(sub, packageItems);
+
+  const intent = await createCheckoutIntent({
+    userId: sub.userId,
+    module: "GROCERY",
+    channel: sub.channel,
+    address: sub.address,
+    note: buildOrderNote(sub, pricing),
+    subscriptionId: sub.id,
+    scheduledFor: scheduledFor.toISOString(),
+    items: lineItems.map((it) => ({
+      productId: it.productId ?? undefined,
+      quantity: Number(it.quantity),
+    })),
+  });
+
+  return { intent, subscription: sub, pricing };
 }
 
 /** Tengeneza oda ya malipo ya mbele — huduma inaanza baada ya malipo kuthibitishwa. */
@@ -505,18 +560,19 @@ export function validateSubscriptionSchedule(
     preferredDayOfWeek?: number;
     preferredDayOfMonth?: number;
     secondaryDayOfMonth?: number;
+    scheduledDeliveryDate?: string;
   }
 ) {
   if (pkg.kind === "WEEKLY_BASKET") {
-    if (data.preferredDayOfWeek == null) {
-      throw new Error("Chagua siku ya utoaji (mf. Jumamosi = 6)");
+    if (data.scheduledDeliveryDate == null && data.preferredDayOfWeek == null) {
+      throw new Error("Chagua siku ya utoaji (Jumatano au Jumamosi)");
     }
     return;
   }
-  if (data.preferredDayOfMonth == null) {
-    throw new Error("Chagua siku ya mwezi ya utoaji (1–28)");
+  if (data.preferredDayOfWeek == null && data.preferredDayOfMonth == null) {
+    throw new Error("Chagua siku ya utoaji kila wiki (Jumatano au Jumamosi)");
   }
-  if (pkg.deliveriesPerMonth >= 2 && data.secondaryDayOfMonth == null) {
+  if (data.preferredDayOfMonth != null && pkg.deliveriesPerMonth >= 2 && data.secondaryDayOfMonth == null) {
     throw new Error("Kifurushi hiki kinahitaji siku ya pili ya utoaji kwa mwezi");
   }
 }
@@ -530,6 +586,7 @@ export async function enrollSubscription(data: {
   preferredDayOfWeek?: number;
   preferredDayOfMonth?: number;
   secondaryDayOfMonth?: number;
+  scheduledDeliveryDate?: string;
   note?: string;
   startNow?: boolean;
 }) {
@@ -547,14 +604,25 @@ export async function enrollSubscription(data: {
   const frequency = data.frequency ?? frequencyForPackageKind(pkg.kind);
   const deliveriesPerMonth = pkg.kind === "MONTHLY_PANTRY" ? pkg.deliveriesPerMonth : 1;
 
-  const firstRun = computeNextRunAt({
-    frequency,
-    from: new Date(),
-    preferredDayOfWeek: data.preferredDayOfWeek,
-    preferredDayOfMonth: data.preferredDayOfMonth,
-    secondaryDayOfMonth: data.secondaryDayOfMonth ?? (deliveriesPerMonth >= 2 ? 15 : null),
-    deliveriesPerMonth,
-  });
+  let preferredDayOfWeek = data.preferredDayOfWeek;
+  let firstRun: Date;
+
+  if (pkg.kind === "WEEKLY_BASKET" && data.scheduledDeliveryDate) {
+    const deliveryAt = validateGroceryScheduledFor(deliveryAtOnDate(data.scheduledDeliveryDate));
+    preferredDayOfWeek = dayOfWeekInTz(deliveryAt);
+    assertGroceryDeliveryDay(preferredDayOfWeek);
+    firstRun = deliveryAt;
+  } else {
+    if (preferredDayOfWeek != null) assertGroceryDeliveryDay(preferredDayOfWeek);
+    firstRun = computeNextRunAt({
+      frequency,
+      from: new Date(),
+      preferredDayOfWeek,
+      preferredDayOfMonth: pkg.kind === "MONTHLY_PANTRY" && preferredDayOfWeek == null ? data.preferredDayOfMonth : null,
+      secondaryDayOfMonth: data.secondaryDayOfMonth ?? (deliveriesPerMonth >= 2 ? 15 : null),
+      deliveriesPerMonth,
+    });
+  }
 
   const scheduledFor = data.startNow ? new Date() : firstRun;
   const pricing = computeSubscriptionPrice(pkg);
@@ -567,8 +635,9 @@ export async function enrollSubscription(data: {
       status: "PENDING_PAYMENT",
       address: data.address,
       channel: data.channel ?? "WEB",
-      preferredDayOfWeek: data.preferredDayOfWeek,
-      preferredDayOfMonth: data.preferredDayOfMonth,
+      preferredDayOfWeek,
+      preferredDayOfMonth:
+        pkg.kind === "MONTHLY_PANTRY" && preferredDayOfWeek == null ? data.preferredDayOfMonth : null,
       secondaryDayOfMonth:
         data.secondaryDayOfMonth ?? (deliveriesPerMonth >= 2 ? 15 : null),
       deliveriesPerMonth,
@@ -578,9 +647,8 @@ export async function enrollSubscription(data: {
     include: { package: true, user: { select: { id: true, name: true, phone: true } } },
   });
 
-  const delivery = await createSubscriptionPrepayOrder(subscription.id, {
+  const delivery = await createSubscriptionCheckoutIntent(subscription.id, {
     scheduledFor,
-    skipDuplicateCheck: true,
   });
 
   const updated = await prisma.grocerySubscription.findUnique({
@@ -590,8 +658,9 @@ export async function enrollSubscription(data: {
 
   return {
     subscription: updated!,
-    firstOrder: delivery.order,
-    firstPayment: delivery.payment,
+    checkoutIntentId: delivery.intent.id,
+    firstOrder: null,
+    firstPayment: null,
     pricing,
     message:
       pricing.discountAmount > 0 || pricing.freeDelivery

@@ -4,6 +4,7 @@ export * from "./units";
 export * from "./serialize";
 export * from "./pagination";
 export * from "./subscription";
+export * from "./grocery-delivery";
 
 /** Format a number as Tanzanian Shillings, e.g. 1500 -> "TZS 1,500". */
 export function formatTZS(amount: number): string {

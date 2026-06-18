@@ -7,6 +7,9 @@
   "dependencies": {
     "@monana/db": "*",
     "@monana/grocery": "*",
-    "@monana/settings": "*"
+    "@monana/notifications": "*",
+    "@monana/settings": "*",
+    "@monana/types": "*",
+    "@monana/utils": "*"
   }
 }

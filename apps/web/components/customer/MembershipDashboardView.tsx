@@ -86,7 +86,7 @@ export function MembershipDashboardView() {
           <h1 className="account-page-head__title">{t("membershipTitle")}</h1>
           <p className="account-page-head__sub">{t("membershipSub")}</p>
         </div>
-        <Link href="/account/membership/enroll" className="landing-btn landing-btn--orange">
+        <Link href="/account/subscription/enroll" className="landing-btn landing-btn--orange">
           {t("membershipEnroll")}
         </Link>
       </header>
@@ -102,7 +102,7 @@ export function MembershipDashboardView() {
         <div className="account-empty">
           <span aria-hidden>🔄</span>
           <p>{t("membershipNone")}</p>
-          <Link href="/account/membership/enroll" className="landing-btn landing-btn--orange">
+          <Link href="/account/subscription/enroll" className="landing-btn landing-btn--orange">
             {t("membershipEnroll")}
           </Link>
         </div>

@@ -25,11 +25,19 @@ type Product = {
   categoryId: string | null;
 };
 
+type DeliverySlot = {
+  date: string;
+  dayOfWeek: number;
+  label: string;
+  deliveryAt: string;
+  weekLabel: string;
+};
+
 type Setup = {
   plans: Plan[];
   deliveryDays: {
-    weekly: { value: number; label: string }[];
-    monthly: { hint: string; examples: { value: number; label: string }[] };
+    weekly: DeliverySlot[];
+    monthly: { hint: string; recurring: { value: number; label: string }[] };
   };
   products: Product[];
   categories: { id: string; name: string }[];
@@ -92,7 +100,7 @@ export function MembershipEnrollView() {
   const [minBasket, setMinBasket] = useState<Record<string, number>>({});
   const [plan, setPlan] = useState<"WEEKLY" | "MONTHLY" | null>(null);
   const [dayWeek, setDayWeek] = useState<number | null>(null);
-  const [dayMonth, setDayMonth] = useState(15);
+  const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [basket, setBasket] = useState<Record<string, number>>({});
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
@@ -153,6 +161,13 @@ export function MembershipEnrollView() {
     [basket]
   );
 
+  useEffect(() => {
+    if (!setup || plan !== "WEEKLY") return;
+    if (!selectedSlot && setup.deliveryDays.weekly[0]) {
+      setSelectedSlot(setup.deliveryDays.weekly[0].date);
+    }
+  }, [setup, plan, selectedSlot]);
+
   const stepIndex = activeSteps.indexOf(step as (typeof STEPS_PACKAGE)[number]);
 
   function setQty(productId: string, delta: number) {
@@ -188,7 +203,11 @@ export function MembershipEnrollView() {
       return;
     }
     if (step === "day") {
-      if (plan === "WEEKLY" && dayWeek == null) {
+      if (plan === "WEEKLY" && !selectedSlot) {
+        setError(t("pickDeliverySlot"));
+        return;
+      }
+      if (plan === "MONTHLY" && dayWeek == null) {
         setError(t("pickWeekday"));
         return;
       }
@@ -220,23 +239,25 @@ export function MembershipEnrollView() {
     try {
       const result = await apiPost<{
         firstOrder?: { id: string } | null;
+        checkoutIntentId?: string;
         subscription: { id: string };
       }>("/api/grocery/store/membership", {
         userId: user.id,
         plan,
         address: address.trim(),
         channel: "WEB",
-        preferredDayOfWeek: plan === "WEEKLY" ? dayWeek ?? undefined : undefined,
-        preferredDayOfMonth: plan === "MONTHLY" ? dayMonth : undefined,
+        preferredDayOfWeek: plan === "MONTHLY" ? dayWeek ?? undefined : undefined,
+        scheduledDeliveryDate: plan === "WEEKLY" ? selectedSlot ?? undefined : undefined,
         defaultBasket: basketLines,
         ...(selectedPackage ? { packageId: selectedPackage.id } : {}),
         note: note.trim() || undefined,
         startNow: false,
       });
-      if (result.firstOrder?.id) {
-        router.push(`/pay/${result.firstOrder.id}`);
+      const payId = result.checkoutIntentId ?? result.firstOrder?.id;
+      if (payId) {
+        router.push(`/pay/${payId}`);
       } else {
-        router.push("/account/membership");
+        router.push("/account/subscription");
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("actionFailed"));
@@ -263,7 +284,7 @@ export function MembershipEnrollView() {
     <div className="enroll-page">
       <header className="account-page-head">
         <div>
-          <Link href="/account/membership" className="order-detail-page__back">
+          <Link href="/account/subscription" className="order-detail-page__back">
             ← {t("back")}
           </Link>
           <h1 className="account-page-head__title">{t("enrollTitle")}</h1>
@@ -312,31 +333,40 @@ export function MembershipEnrollView() {
         <section className="enroll-panel">
           <h2>{t("enrollStepDay")}</h2>
           {plan === "WEEKLY" ? (
-            <div className="enroll-day-grid">
-              {setup.deliveryDays.weekly.map((d) => (
-                <button
-                  key={d.value}
-                  type="button"
-                  className={`enroll-day-btn ${dayWeek === d.value ? "enroll-day-btn--active" : ""}`}
-                  onClick={() => setDayWeek(d.value)}
-                >
-                  {d.label}
-                </button>
-              ))}
-            </div>
+            <>
+              <p className="enroll-panel__hint">{t("enrollWeeklySlotHint")}</p>
+              <div className="enroll-day-grid">
+                {setup.deliveryDays.weekly.map((slot) => (
+                  <button
+                    key={slot.date}
+                    type="button"
+                    className={`enroll-day-btn ${selectedSlot === slot.date ? "enroll-day-btn--active" : ""}`}
+                    onClick={() => setSelectedSlot(slot.date)}
+                  >
+                    <span>{slot.label}</span>
+                    <small>{slot.weekLabel}</small>
+                  </button>
+                ))}
+              </div>
+              {setup.deliveryDays.weekly.length === 0 ? (
+                <p className="enroll-panel__hint">{t("noDeliverySlots")}</p>
+              ) : null}
+            </>
           ) : (
             <>
               <p className="enroll-panel__hint">{setup.deliveryDays.monthly.hint}</p>
-              <label className="profile-field">
-                <span className="profile-field__label">{t("monthDayLabel")}</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={28}
-                  value={dayMonth}
-                  onChange={(e) => setDayMonth(Number(e.target.value))}
-                />
-              </label>
+              <div className="enroll-day-grid">
+                {setup.deliveryDays.monthly.recurring.map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    className={`enroll-day-btn ${dayWeek === d.value ? "enroll-day-btn--active" : ""}`}
+                    onClick={() => setDayWeek(d.value)}
+                  >
+                    {d.label}
+                  </button>
+                ))}
+              </div>
             </>
           )}
         </section>

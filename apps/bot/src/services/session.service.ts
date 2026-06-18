@@ -10,9 +10,15 @@ export type State =
   | "CHOOSING"
   | "CHOOSING_MEMBERSHIP_PLAN"
   | "CHOOSING_MEMBERSHIP_DAY"
+  | "ASK_GROCERY_DELIVERY"
   | "ASK_ADDRESS"
+  | "ASK_PAYMENT_TIMING"
   | "ASK_SUB_ADDRESS"
+  | "CHOOSING_PAY_ORDER"
   | "AWAIT_PAYMENT"
+  | "CHOOSING_RESTAURANT_HUB"
+  | "CHOOSING_RESTAURANT_MEMBERSHIP_SLOTS"
+  | "ASK_RESTAURANT_MEMBERSHIP_ADDRESS"
   | "CHOOSING_LANGUAGE"
   | "CHOOSING_GROCERY"
   | "MANAGING_SUBSCRIPTION"
@@ -50,9 +56,15 @@ export type SessionData = {
   membershipMode?: boolean;
   preferredDayOfWeek?: number;
   preferredDayOfMonth?: number;
+  scheduledDeliveryDate?: string;
+  scheduledFor?: string;
+  address?: string;
+  deliverySlots?: { date: string; dayOfWeek: number; label: string; deliveryAt: string; weekLabel: string }[];
   activeSubscriptionId?: string;
   orderId?: string;
+  intentId?: string;
   paymentId?: string;
+  payOrders?: { id: string; total: string; status: string }[];
   botMenu?: BotMenuCache;
   groceryPackages?: {
     id: string;
@@ -65,6 +77,7 @@ export type SessionData = {
   selectedPackageId?: string;
   selectedPackageKind?: string;
   pendingSubOrderId?: string;
+  selectedMealSlots?: ("BREAKFAST" | "LUNCH" | "DINNER")[];
 };
 
 export type Session = { state: State; data: SessionData };

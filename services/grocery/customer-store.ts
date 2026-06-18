@@ -3,7 +3,8 @@ import type { AppLocale } from "@monana/i18n";
 import {
   MEMBERSHIP_PLANS,
   MAX_MEMBERSHIP_DISCOUNT_PERCENT,
-  weeklyDeliveryDays,
+  groceryRecurringDeliveryDays,
+  getUpcomingGroceryDeliverySlots,
   dayOfWeekLabel,
   membershipPlanTitle,
   packageKindLabel,
@@ -60,7 +61,8 @@ export async function getGroceryStoreHome(userId: string, locale: AppLocale = "e
   const pending = subs.find((s) => s.status === "PENDING_PAYMENT");
   const primary = active ?? paused ?? pending ?? null;
 
-  let pendingPayment: { orderId: string; paymentId: string; amount: string } | null = null;
+  let pendingPayment: { orderId?: string; intentId?: string; paymentId?: string; amount: string } | null =
+    null;
   if (pending) {
     const order = pending.orders.find(
       (o) => o.payment && o.payment.status !== "PAID" && o.status !== "CANCELLED"
@@ -71,6 +73,22 @@ export async function getGroceryStoreHome(userId: string, locale: AppLocale = "e
         paymentId: order.payment.id,
         amount: String(order.total),
       };
+    } else {
+      const intent = await prisma.checkoutIntent.findFirst({
+        where: {
+          userId,
+          consumedAt: null,
+          expiresAt: { gt: new Date() },
+          payload: { path: ["subscriptionId"], equals: pending.id },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      if (intent) {
+        pendingPayment = {
+          intentId: intent.id,
+          amount: String(intent.total),
+        };
+      }
     }
   }
 
@@ -175,16 +193,13 @@ export async function getMembershipSetup(locale: AppLocale = "en") {
           : null,
     })),
     deliveryDays: {
-      weekly: weeklyDeliveryDays(locale),
+      weekly: getUpcomingGroceryDeliverySlots({ locale, cutoffHours: 48 }),
       monthly: {
+        recurring: groceryRecurringDeliveryDays(locale),
         hint:
           locale === "sw"
-            ? "Chagua siku ya mwezi (1–28) utakayopokea mzigo"
-            : "Choose a day of the month (1–28) for delivery",
-        examples: [
-          { value: 1, label: locale === "sw" ? "Tarehe 1" : "Day 1" },
-          { value: 15, label: locale === "sw" ? "Tarehe 15" : "Day 15" },
-        ],
+            ? "Chagua siku ya kupokea mzigo kila wiki — Jumatano au Jumamosi"
+            : "Choose your weekly delivery day — Wednesday or Saturday",
       },
     },
     products,
@@ -204,6 +219,7 @@ export async function getOnDemandCatalog(categoryId?: string) {
     orderType: "ON_DEMAND" as const,
     products,
     categories,
+    deliverySlots: getUpcomingGroceryDeliverySlots({ cutoffHours: 48 }),
     createOrder: {
       method: "POST",
       path: "/api/orders",
@@ -211,6 +227,7 @@ export async function getOnDemandCatalog(categoryId?: string) {
         module: "GROCERY",
         items: [{ productId: "...", quantity: 1 }],
         address: "Anwani ya kufikishia",
+        scheduledFor: "2026-06-18T06:00:00.000Z",
       },
     },
   };
@@ -249,11 +266,11 @@ export async function previewMembershipBasket(
     deliveryDayHint:
       plan === "WEEKLY"
         ? locale === "sw"
-          ? "Utachagua siku (mf. Kila Jumamosi) hatua inayofuata"
-          : "You will pick a delivery day next (e.g. every Saturday)"
+          ? "Utachagua Jumatano au Jumamosi ya wiki hii (au ijayo)"
+          : "You will pick Wednesday or Saturday this week (or next)"
         : locale === "sw"
-          ? "Utachagua tarehe ya mwezi hatua inayofuata"
-          : "You will pick a day of the month next",
+          ? "Utachagua siku ya kupokea mzigo kila wiki — Jumatano au Jumamosi"
+          : "You will pick your weekly delivery day — Wednesday or Saturday",
     items: lineItems.items.map((it) => ({
       name: it.name,
       quantity: Number(it.quantity),
@@ -311,7 +328,7 @@ export function deliveryDayLabel(
   preferredDayOfMonth?: number | null,
   locale: AppLocale = "en"
 ) {
-  if (plan === "WEEKLY" && preferredDayOfWeek != null) {
+  if (preferredDayOfWeek != null) {
     return locale === "sw"
       ? `Kila ${dayOfWeekLabel(preferredDayOfWeek, "sw")}`
       : `Every ${dayOfWeekLabel(preferredDayOfWeek, "en")}`;

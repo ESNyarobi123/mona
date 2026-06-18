@@ -42,6 +42,7 @@ export type BotMessageKey =
   | "membershipChoosePlan"
   | "membershipChooseDayWeekly"
   | "membershipChooseDayMonthly"
+  | "membershipChooseDayRecurring"
   | "membershipBasketHint"
   | "membershipNoPlans"
   | "orderOnDemand"
@@ -58,8 +59,20 @@ export type BotMessageKey =
   | "backHome"
   | "cartEmptyHint"
   | "addressHint"
+  | "paymentTimingPrompt"
+  | "payLaterPlaced"
+  | "payDeliveryChoose"
+  | "noOrdersToPay"
   | "menuGrocery"
   | "groceryHubTitle"
+  | "restaurantHubTitle"
+  | "restaurantMembershipChooseSlots"
+  | "restaurantMembershipAddressHint"
+  | "restaurantMembershipEnrolled"
+  | "restaurantMembershipActive"
+  | "restaurantMembershipNone"
+  | "restaurantMembershipStatus"
+  | "restaurantMembershipFailed"
   | "groceryHubOnDemand"
   | "groceryHubSubscribe"
   | "groceryHubMySub"
@@ -121,9 +134,11 @@ const EN: Record<BotMessageKey, string> = {
   membershipChoosePlan:
     "📦 *Choose your plan:*\n\n1️⃣ Weekly — save 3%\n2️⃣ Monthly — save 5% + free delivery\n\nReply *1* or *2*.",
   membershipChooseDayWeekly:
-    "📅 *Which day each week?*\n\n1 Sunday\n2 Monday\n3 Tuesday\n4 Wednesday\n5 Thursday\n6 Friday\n7 Saturday\n\nReply with a number.",
+    "📅 *Delivery day this week?* (Wednesday or Saturday only)\nReply after you see the slot list.",
   membershipChooseDayMonthly:
     "📅 *Which day each month?*\nSend a number from *1* to *28* (e.g. 1 or 15).",
+  membershipChooseDayRecurring:
+    "📅 *Which day every week?*\n\n1 Wednesday (Jumatano)\n2 Saturday (Jumamosi)\n\nReply with a number.",
   membershipBasketHint:
     "🛒 Pick the items you want every time.\nReply with item *numbers*, then type *done*. ✅",
   membershipNoPlans: "Membership is not available right now.",
@@ -145,9 +160,27 @@ const EN: Record<BotMessageKey, string> = {
   backHome: "🏠 Back to the main menu.",
   cartEmptyHint: "🛒 Your cart is empty — pick an item number first.",
   addressHint: "📍 Send your delivery address (area / street).\n↩️ _Type *0* to cancel_",
+  paymentTimingPrompt:
+    "💳 *How do you want to pay?*\n\n1️⃣ Pay now (Lipa Namba before delivery)\n2️⃣ Pay on delivery (after you receive your order)",
+  payLaterPlaced:
+    "✅ *Order placed!* {ref}\n\nPay when you receive your delivery, then type *pay order* to submit your payment reference.",
+  payDeliveryChoose: "💳 *Pay for which order?*\nReply with the order *number*.",
+  noOrdersToPay: "No delivered orders waiting for payment right now.",
   menuGrocery: "Grocery",
   groceryHubTitle:
     "🛒 *Grocery*\nWhat would you like?\n\n1️⃣ Shop now (one-time order)\n2️⃣ Subscribe (weekly / monthly delivery)",
+  restaurantHubTitle:
+    "🍲 *Restaurant*\n\n1️⃣ Order now\n2️⃣ Join membership (meal reminders on WhatsApp)\n3️⃣ My membership",
+  restaurantMembershipChooseSlots:
+    "🎫 *Restaurant membership*\nPick your meal times (one, two, or all three).\nReply with numbers, e.g. `1` or `1 3`:\n\n1. 🌅 Breakfast\n2. ☀️ Lunch\n3. 🌙 Dinner",
+  restaurantMembershipAddressHint:
+    "📍 Send your delivery address (optional).\n↩️ Type *-* to skip",
+  restaurantMembershipEnrolled:
+    "✅ *Membership active!*\nYou'll get WhatsApp reminders when these windows open:\n*{slots}*",
+  restaurantMembershipActive: "You already have restaurant membership for: *{slots}*",
+  restaurantMembershipNone: "You don't have restaurant membership yet. Choose *2* from the restaurant menu to join.",
+  restaurantMembershipStatus: "🎫 *Your membership*\nStatus: *{status}*\nMeals: *{slots}*",
+  restaurantMembershipFailed: "Could not complete membership. Try again or contact support.",
   groceryHubOnDemand: "Shop now",
   groceryHubSubscribe: "Subscribe",
   groceryHubMySub: "My subscription",
@@ -211,9 +244,11 @@ const SW: Record<BotMessageKey, string> = {
   membershipChoosePlan:
     "📦 *Chagua mpango:*\n\n1️⃣ Kila wiki — okoa 3%\n2️⃣ Kila mwezi — okoa 5% + uwasilishaji bure\n\nAndika *1* au *2*.",
   membershipChooseDayWeekly:
-    "📅 *Siku gani kila wiki?*\n\n1 Jumapili\n2 Jumatatu\n3 Jumanne\n4 Jumatano\n5 Alhamisi\n6 Ijumaa\n7 Jumamosi\n\nAndika namba.",
+    "📅 *Siku ya kupokea mzigo wiki hii?* (Jumatano au Jumamosi pekee)\nSubiri orodha ya siku.",
   membershipChooseDayMonthly:
     "📅 *Tarehe gani kila mwezi?*\nAndika namba kuanzia *1* hadi *28* (mf. 1 au 15).",
+  membershipChooseDayRecurring:
+    "📅 *Siku gani kila wiki?*\n\n1 Jumatano\n2 Jumamosi\n\nAndika namba.",
   membershipBasketHint:
     "🛒 Chagua bidhaa unazotaka kila mara.\nAndika *namba* za bidhaa, kisha *maliza*. ✅",
   membershipNoPlans: "Uanachama haupatikani kwa sasa.",
@@ -235,9 +270,27 @@ const SW: Record<BotMessageKey, string> = {
   backHome: "🏠 Umerudi kwenye menyu kuu.",
   cartEmptyHint: "🛒 Kikapu ni tupu — chagua namba ya bidhaa kwanza.",
   addressHint: "📍 Tuma anwani ya kufikishia (eneo / mtaa).\n↩️ _Andika *0* kughairi_",
+  paymentTimingPrompt:
+    "💳 *Ungependa kulipiaje?*\n\n1️⃣ Lipa sasa (Lipa Namba kabla ya mzigo)\n2️⃣ Lipa ukifika (baada ya kupokea mzigo)",
+  payLaterPlaced:
+    "✅ *Oda imewekwa!* {ref}\n\nLipa ukifika mzigo, kisha andika *lipa oda* kutuma reference ya malipo.",
+  payDeliveryChoose: "💳 *Lipa oda ipi?*\nAndika *namba* ya oda.",
+  noOrdersToPay: "Hakuna oda iliyowasilishwa inayosubiri malipo kwa sasa.",
   menuGrocery: "Grocery",
   groceryHubTitle:
     "🛒 *Grocery*\nUnataka nini?\n\n1️⃣ Nunua leo (mara moja)\n2️⃣ Jiunge (utoaji kila wiki/mwezi)",
+  restaurantHubTitle:
+    "🍲 *Restaurant*\n\n1️⃣ Agiza sasa\n2️⃣ Jiunge uanachama (ukumbusho wa WhatsApp)\n3️⃣ Uanachama wangu",
+  restaurantMembershipChooseSlots:
+    "🎫 *Uanachama wa Restaurant*\nChagua muda/muda (moja, mbili, au zote tatu).\nAndika namba, mf. `1` au `1 3`:\n\n1. 🌅 Asubuhi\n2. ☀️ Mchana\n3. 🌙 Usiku",
+  restaurantMembershipAddressHint:
+    "📍 Tuma anwani ya kufikishia (si lazima).\n↩️ Andika *-* kuruka",
+  restaurantMembershipEnrolled:
+    "✅ *Uanachama umewashwa!*\nUtapokea ukumbusho wa WhatsApp dirisha likifunguka:\n*{slots}*",
+  restaurantMembershipActive: "Tayari una uanachama wa restaurant kwa: *{slots}*",
+  restaurantMembershipNone: "Bado hujajiunga na uanachama. Chagua *2* kwenye menyu ya restaurant.",
+  restaurantMembershipStatus: "🎫 *Uanachama wako*\nHali: *{status}*\nMuda: *{slots}*",
+  restaurantMembershipFailed: "Imeshindikana kujiunga. Jaribu tena au wasiliana nasi.",
   groceryHubOnDemand: "Nunua leo",
   groceryHubSubscribe: "Jiunge",
   groceryHubMySub: "Usajili wangu",

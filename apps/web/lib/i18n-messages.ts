@@ -156,14 +156,45 @@ export const UI_MESSAGES = {
     en: "Status updates also go to your WhatsApp when the order moves.",
     sw: "Taarifa za hali pia zinakufikia WhatsApp oda inaposogea.",
   },
-  membershipTitle: { en: "Grocery membership", sw: "Uanachama wa grocery" },
+  membershipTitle: { en: "Grocery subscription", sw: "Usajili wa grocery" },
   membershipSub: {
-    en: "Weekly or monthly delivery with your default basket.",
-    sw: "Utoaji wa kila wiki au mwezi na kikapu chako cha msingi.",
+    en: "Weekly or monthly grocery delivery — save up to 5%.",
+    sw: "Utoaji wa grocery kila wiki au mwezi — okoa hadi 5%.",
+  },
+  subscriptionTitle: { en: "Grocery subscription", sw: "Usajili wa grocery" },
+  subscriptionSub: {
+    en: "Weekly or monthly grocery delivery — save up to 5%.",
+    sw: "Utoaji wa grocery kila wiki au mwezi — okoa hadi 5%.",
+  },
+  restaurantMembershipTitle: { en: "Restaurant membership", sw: "Uanachama wa Restaurant" },
+  restaurantMembershipSub: {
+    en: "Pick Breakfast, Lunch, and/or Dinner — get WhatsApp reminders when each order window opens.",
+    sw: "Chagua Asubuhi, Mchana, na/au Usiku — upokee ukumbusho wa WhatsApp dirisha likifunguka.",
+  },
+  restaurantMembershipActive: { en: "Your meal reminders", sw: "Ukumbusho wa muda wa chakula" },
+  restaurantMembershipNone: { en: "You are not a restaurant member yet.", sw: "Bado hujajiunga na uanachama wa restaurant." },
+  restaurantMembershipEnroll: { en: "Join membership", sw: "Jiunge uanachama" },
+  restaurantMembershipEnrollTitle: { en: "Join restaurant membership", sw: "Jiunge uanachama wa Restaurant" },
+  restaurantMembershipEnrollSuccess: {
+    en: "You're in! We'll WhatsApp you when your meal windows open.",
+    sw: "Umefanikiwa! Tutakutumia WhatsApp dirisha likifunguka.",
+  },
+  restaurantMembershipPickMeals: { en: "Your meals", sw: "Muda wa chakula" },
+  restaurantMembershipPickMealsHint: {
+    en: "Choose one, two, or all three.",
+    sw: "Chagua moja, mbili, au zote tatu.",
+  },
+  restaurantMembershipPickSlot: {
+    en: "Pick at least one meal time.",
+    sw: "Chagua angalau muda mmoja wa chakula.",
+  },
+  restaurantMembershipReminderNote: {
+    en: "When each window opens, we'll send your menu on WhatsApp so you can pick your meal.",
+    sw: "Dirisha likifunguka, tutakutumia menyu kwenye WhatsApp uchague chakula.",
   },
   membershipNone: { en: "You are not enrolled yet.", sw: "Bado hujajiunga." },
-  membershipEnroll: { en: "Join membership", sw: "Jiunge na uanachama" },
-  membershipManage: { en: "My membership", sw: "Uanachama wangu" },
+  membershipEnroll: { en: "Join subscription", sw: "Jiunge usajili" },
+  membershipManage: { en: "My subscription", sw: "Usajili wangu" },
   nextDelivery: { en: "Next delivery", sw: "Utoaji unaofuata" },
   statusPaused: { en: "Paused", sw: "Imesitishwa" },
   statusActive: { en: "Active", sw: "Inaendelea" },
@@ -176,6 +207,8 @@ export const UI_MESSAGES = {
   quickProfileSub: { en: "Name, email, language", sw: "Jina, barua pepe, lugha" },
   navOverview: { en: "Overview", sw: "Muhtasari" },
   navMembership: { en: "Membership", sw: "Uanachama" },
+  navSubscription: { en: "Grocery subscription", sw: "Usajili wa grocery" },
+  navRestaurantMembership: { en: "Restaurant membership", sw: "Uanachama Restaurant" },
   navOrderFood: { en: "Order food", sw: "Oda chakula" },
   navShopGrocery: { en: "Shop grocery", sw: "Nunua grocery" },
   navRestOrders: { en: "Restaurant orders", sw: "Oda restaurant" },
@@ -202,6 +235,21 @@ export const UI_MESSAGES = {
   enrollTitle: { en: "Join grocery membership", sw: "Jiunge na uanachama wa grocery" },
   enrollStepPlan: { en: "Choose plan", sw: "Chagua mpango" },
   enrollStepDay: { en: "Delivery day", sw: "Siku ya utoaji" },
+  enrollWeeklySlotHint: {
+    en: "When should we deliver this week? (Wednesday or Saturday only)",
+    sw: "Tukuletee lini wiki hii? (Jumatano au Jumamosi pekee)",
+  },
+  pickDeliverySlot: { en: "Pick a delivery day", sw: "Chagua siku ya kupokea mzigo" },
+  noDeliverySlots: {
+    en: "No delivery slots available right now. Try again later.",
+    sw: "Hakuna siku za utoaji kwa sasa. Jaribu tena baadaye.",
+  },
+  checkoutDeliveryDay: { en: "Delivery day", sw: "Siku ya kupokea mzigo" },
+  checkoutDeliveryHint: {
+    en: "We deliver groceries on Wednesday and Saturday only",
+    sw: "Tunatoa grocery Jumatano na Jumamosi pekee",
+  },
+  pickDeliveryDay: { en: "Choose when to receive your order", sw: "Chagua siku ya kupokea mzigo" },
   enrollStepBasket: { en: "Default basket", sw: "Kikapu cha msingi" },
   enrollStepAddress: { en: "Address & confirm", sw: "Anwani na uthibitisho" },
   continue: { en: "Continue", sw: "Endelea" },
@@ -374,7 +422,45 @@ export const UI_MESSAGES = {
   checkoutNoteHint: { en: "e.g. gate code, landmark", sw: "mf. mlango, alama" },
   qtyLabel: { en: "Qty", sw: "Idadi" },
   subtotal: { en: "Subtotal", sw: "Jumla ya bidhaa" },
+  deliveryFee: { en: "Delivery", sw: "Uwasilishaji" },
+  deliveryFree: { en: "FREE", sw: "BURE" },
+  deliveryFreeHint: {
+    en: "Add {amount} more for free delivery",
+    sw: "Ongeza {amount} zaidi kupata usafiri bure",
+  },
+  orderTotal: { en: "Total to pay", sw: "Jumla ya kulipa" },
   orderCreated: { en: "Order created!", sw: "Oda imeundwa!" },
+  checkoutCreated: {
+    en: "Almost there — complete payment to place your order.",
+    sw: "Karibu — maliza malipo ili oda iingie mfumoni.",
+  },
+  checkoutPayLaterCreated: {
+    en: "Order placed! Pay when you receive your delivery.",
+    sw: "Oda imewekwa! Utalipa ukifika mzigo.",
+  },
+  paymentTimingTitle: { en: "How would you like to pay?", sw: "Ungependa kulipiaje?" },
+  paymentTimingNow: {
+    en: "Pay now (Lipa Namba before delivery)",
+    sw: "Lipa sasa (Lipa Namba kabla ya mzigo)",
+  },
+  paymentTimingLater: {
+    en: "Pay on delivery (pay after you receive your order)",
+    sw: "Lipa ukifika (malipo baada ya kupokea mzigo)",
+  },
+  payOnDeliveryNote: {
+    en: "You chose pay on delivery. Pay after you receive your order, then submit your payment reference.",
+    sw: "Umechagua kulipia ukifika. Lipa baada ya kupokea mzigo, kisha tuma reference ya malipo.",
+  },
+  requestPaymentTitle: { en: "Request payment approval", sw: "Omba uthibitisho wa malipo" },
+  requestPaymentHint: {
+    en: "Submit your M-Pesa / Lipa Namba reference after paying. Admin will approve your order.",
+    sw: "Tuma reference ya M-Pesa / Lipa Namba baada ya kulipa. Admin ataidhinisha oda yako.",
+  },
+  orderNotSubmitted: { en: "Awaiting payment approval", sw: "Inasubiri uthibitisho wa malipo" },
+  paymentAwaitingAdmin: {
+    en: "Payment submitted — waiting for admin approval",
+    sw: "Malipo yametumwa — inasubiri uthibitisho wa admin",
+  },
   orderFailed: { en: "Failed to place order", sw: "Imeshindwa kuweka oda" },
   checkoutAddressHint: { en: "Where we deliver your order", sw: "Taarifa za mahali bidhaa zitafikishwa" },
 
@@ -459,6 +545,14 @@ export const UI_MESSAGES = {
 
   // ── Payment page ──
   payTitle: { en: "Pay with Lipa Namba", sw: "Lipa kwa Lipa Namba" },
+  payBeforeOrderSaved: {
+    en: "Complete payment to place your order",
+    sw: "Maliza malipo ili oda iingie mfumoni",
+  },
+  checkoutRefHint: {
+    en: "Your order is saved only after you submit this reference.",
+    sw: "Oda yako itaingia mfumoni tu ukishaweka reference hii.",
+  },
   orderNotFound: { en: "Order not found.", sw: "Oda haipatikani." },
   backToAccount: { en: "Back to account", sw: "Rudi account" },
   paymentConfirmed: { en: "Payment confirmed", sw: "Malipo yamethibitishwa" },

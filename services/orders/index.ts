@@ -1,20 +1,12 @@
 import { prisma, type BusinessModule, type OrderStatus, type MealSlot, type GroceryOrderType } from "@monana/db";
 import { createOrderSchema } from "@monana/types";
-import { paginatedResult, type PaginationParams } from "@monana/utils";
+import { computeDeliveryQuote } from "@monana/settings";
+import { paginatedResult, type PaginationParams, validateGroceryScheduledFor } from "@monana/utils";
 import { assertMealSlotOpen } from "../restaurant/meal-slots";
 import { enqueueKitchen } from "../restaurant/kitchen-queue";
+import type { CreateOrderArgs } from "./checkout-intent";
 
-export type CreateOrderArgs = {
-  userId: string;
-  module: BusinessModule;
-  channel?: "WEB" | "WHATSAPP";
-  items: { productId?: string; menuItemId?: string; quantity: number }[];
-  address?: string;
-  note?: string;
-  mealSlot?: MealSlot;
-  subscriptionId?: string;
-  scheduledFor?: string;
-};
+export type { CreateOrderArgs } from "./checkout-intent";
 
 const STATUS_FLOW_GROCERY: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
@@ -67,6 +59,22 @@ async function resolveLineItem(it: { productId?: string; menuItemId?: string; qu
   throw new Error("Kila item lazima iwe na productId au menuItemId");
 }
 
+export async function quoteOrderDelivery(args: {
+  module: BusinessModule;
+  address?: string;
+  items: { productId?: string; menuItemId?: string; quantity: number }[];
+  forceFreeDelivery?: boolean;
+}) {
+  const lineItems = await Promise.all(args.items.map(resolveLineItem));
+  const subtotal = lineItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  return computeDeliveryQuote({
+    module: args.module,
+    address: args.address,
+    subtotal,
+    forceFreeDelivery: args.forceFreeDelivery,
+  });
+}
+
 export async function createOrder(args: CreateOrderArgs) {
   const input = createOrderSchema.parse(args);
 
@@ -75,7 +83,20 @@ export async function createOrder(args: CreateOrderArgs) {
   }
 
   const lineItems = await Promise.all(input.items.map(resolveLineItem));
-  const total = lineItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  const subtotal = lineItems.reduce((sum, it) => sum + it.price * it.quantity, 0);
+  const quote = await computeDeliveryQuote({
+    module: input.module,
+    address: input.address,
+    subtotal,
+  });
+
+  let scheduledFor: Date | undefined;
+  if (input.scheduledFor) {
+    scheduledFor =
+      input.module === "GROCERY"
+        ? validateGroceryScheduledFor(input.scheduledFor)
+        : new Date(input.scheduledFor);
+  }
 
   const order = await prisma.order.create({
     data: {
@@ -83,15 +104,20 @@ export async function createOrder(args: CreateOrderArgs) {
       module: input.module,
       orderType: input.module === "GROCERY" ? (input.subscriptionId ? "SUBSCRIPTION" : "ON_DEMAND") : null,
       channel: input.channel,
-      total,
+      subtotal: quote.subtotal,
+      deliveryFee: quote.deliveryFee,
+      total: quote.total,
+      deliveryZoneId: quote.zoneId,
       address: input.address,
       note: input.note,
       mealSlot: input.mealSlot,
       subscriptionId: input.subscriptionId,
-      scheduledFor: input.scheduledFor ? new Date(input.scheduledFor) : undefined,
+      scheduledFor,
+      paymentTiming: input.paymentTiming ?? "PAY_NOW",
+      submittedAt: input.paymentTiming === "PAY_ON_DELIVERY" ? null : new Date(),
       items: { create: lineItems },
     },
-    include: { items: true },
+    include: { items: true, user: { select: { id: true, name: true, phone: true } } },
   });
 
   if (input.module === "RESTAURANT" && input.mealSlot) {
@@ -212,3 +238,10 @@ export async function listOrders(
   ]);
   return paginatedResult(items, total, page, limit);
 }
+
+export {
+  createCheckoutIntent,
+  fulfillCheckoutIntent,
+  getCheckoutIntent,
+  type CheckoutIntentPayload,
+} from "./checkout-intent";

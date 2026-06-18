@@ -10,7 +10,8 @@ import type { CustomerMessageKey } from "../../lib/customer-i18n";
 
 const NAV_ITEMS = [
   { href: "/account", labelKey: "navOverview" as const, icon: "🏠", exact: true as const },
-  { href: "/account/membership", labelKey: "navMembership" as const, icon: "🔄" },
+  { href: "/account/restaurant/membership", labelKey: "navRestaurantMembership" as const, icon: "🎫" },
+  { href: "/account/subscription", labelKey: "navSubscription" as const, icon: "🔄" },
   { href: "/restaurant/menu", labelKey: "navOrderFood" as const, icon: "🍽️" },
   { href: "/grocery/products", labelKey: "navShopGrocery" as const, icon: "🛍️" },
   { href: "/restaurant/orders", labelKey: "navRestOrders" as const, icon: "🍲" },
@@ -42,7 +43,9 @@ function currentNavLabel(pathname: string, t: (key: CustomerMessageKey) => strin
   if (pathname.startsWith("/restaurant/orders")) return t("navRestOrders");
   if (pathname.startsWith("/grocery/orders")) return t("navGrocOrders");
   if (pathname.startsWith("/support")) return t("navSupport");
-  if (pathname.startsWith("/account/membership")) return t("navMembership");
+  if (pathname.startsWith("/account/restaurant/membership")) return t("navRestaurantMembership");
+  if (pathname.startsWith("/account/subscription")) return t("navSubscription");
+  if (pathname.startsWith("/account/membership")) return t("navSubscription");
   if (pathname.startsWith("/account/orders")) return t("orderLabel");
   if (pathname.startsWith("/profile")) return t("profileTitle");
   return "Monana";

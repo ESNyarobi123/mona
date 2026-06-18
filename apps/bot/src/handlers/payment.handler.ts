@@ -9,22 +9,28 @@ type Reply = (text: string) => Promise<void>;
 /** Send Lipa Namba instructions + optional QR; set AWAIT_PAYMENT state. */
 export async function sendPaymentRequest(
   phone: string,
-  orderId: string,
+  checkoutId: string,
   total: number,
   reply: Reply,
-  heading?: string
+  heading?: string,
+  options?: { isIntent?: boolean }
 ) {
   const locale = sessionLocale(phone);
-  const pay = await api.createPayment(orderId, locale);
+  const isIntent = options?.isIntent ?? false;
+  const pay = await api.createPayment(
+    isIntent ? { intentId: checkoutId } : { orderId: checkoutId },
+    locale
+  );
   const session = getSession(phone);
   patchSession(phone, "AWAIT_PAYMENT", {
     ...session.data,
-    orderId,
+    orderId: isIntent ? undefined : checkoutId,
+    intentId: isIntent ? checkoutId : undefined,
     paymentId: pay.payment.id,
     membershipMode: false,
   });
 
-  const ref = `#${orderId.slice(-6).toUpperCase()}`;
+  const ref = `#${checkoutId.slice(-6).toUpperCase()}`;
   const amount = formatTZS(total);
   const instructions = botMessage(locale, "payInstructions", {
     ref,
@@ -59,7 +65,13 @@ export async function finishPaymentProof(phone: string, reference: string, reply
   };
 
   try {
-    await api.submitPayment(session.data.paymentId!, reference);
+    if (session.data.intentId) {
+      await api.submitPayment({ intentId: session.data.intentId, reference });
+    } else if (session.data.paymentId) {
+      await api.submitPayment({ paymentId: session.data.paymentId, reference });
+    } else {
+      throw new Error(botMessage(locale, "paymentRefRejected"));
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : botMessage(locale, "paymentRefRejected");
     return reply(`❌ ${message}`);
@@ -69,6 +81,7 @@ export async function finishPaymentProof(phone: string, reference: string, reply
     ...keep,
     cart: [],
     orderId: undefined,
+    intentId: undefined,
     paymentId: undefined,
     membershipMode: false,
     activeSubscriptionId: undefined,

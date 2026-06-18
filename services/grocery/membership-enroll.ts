@@ -1,8 +1,15 @@
 import { prisma, type Channel, type SubscriptionFrequency } from "@monana/db";
 import { MEMBERSHIP_PLANS } from "@monana/utils";
 import {
+  assertGroceryDeliveryDay,
+  dayOfWeekInTz,
+  deliveryAtOnDate,
+  validateGroceryScheduledFor,
+} from "@monana/utils";
+import {
   computeNextRunAt,
   createSubscriptionPrepayOrder,
+  createSubscriptionCheckoutIntent,
   parsePackageItems,
   type PackageItem,
   pricingForSubscription,
@@ -22,6 +29,7 @@ export async function enrollCustomerMembership(data: {
   channel?: Channel;
   preferredDayOfWeek?: number;
   preferredDayOfMonth?: number;
+  scheduledDeliveryDate?: string;
   defaultBasket: PackageItem[];
   packageId?: string;
   note?: string;
@@ -70,14 +78,26 @@ export async function enrollCustomerMembership(data: {
     pricing = await pricingForSubscription(data.plan, data.defaultBasket);
   }
 
-  const firstRun = computeNextRunAt({
-    frequency,
-    from: new Date(),
-    preferredDayOfWeek: data.preferredDayOfWeek,
-    preferredDayOfMonth: data.preferredDayOfMonth,
-    secondaryDayOfMonth,
-    deliveriesPerMonth,
-  });
+  let preferredDayOfWeek = data.preferredDayOfWeek;
+  let preferredDayOfMonth = data.preferredDayOfMonth;
+  let firstRun: Date;
+
+  if (data.plan === "WEEKLY" && data.scheduledDeliveryDate) {
+    const deliveryAt = validateGroceryScheduledFor(deliveryAtOnDate(data.scheduledDeliveryDate));
+    preferredDayOfWeek = dayOfWeekInTz(deliveryAt);
+    assertGroceryDeliveryDay(preferredDayOfWeek);
+    firstRun = deliveryAt;
+  } else {
+    if (preferredDayOfWeek != null) assertGroceryDeliveryDay(preferredDayOfWeek);
+    firstRun = computeNextRunAt({
+      frequency,
+      from: new Date(),
+      preferredDayOfWeek,
+      preferredDayOfMonth: data.plan === "MONTHLY" ? null : preferredDayOfMonth,
+      secondaryDayOfMonth,
+      deliveriesPerMonth,
+    });
+  }
 
   const scheduledFor = data.startNow ? new Date() : firstRun;
 
@@ -89,8 +109,8 @@ export async function enrollCustomerMembership(data: {
       status: "PENDING_PAYMENT",
       address: data.address,
       channel: data.channel ?? "WEB",
-      preferredDayOfWeek: data.plan === "WEEKLY" ? data.preferredDayOfWeek : null,
-      preferredDayOfMonth: data.plan === "MONTHLY" ? data.preferredDayOfMonth : null,
+      preferredDayOfWeek,
+      preferredDayOfMonth: data.plan === "MONTHLY" && preferredDayOfWeek == null ? preferredDayOfMonth : null,
       secondaryDayOfMonth,
       deliveriesPerMonth,
       defaultBasket: data.defaultBasket,
@@ -100,9 +120,8 @@ export async function enrollCustomerMembership(data: {
     include: { package: true, user: { select: { id: true, name: true, phone: true } } },
   });
 
-  const delivery = await createSubscriptionPrepayOrder(subscription.id, {
+  const delivery = await createSubscriptionCheckoutIntent(subscription.id, {
     scheduledFor,
-    skipDuplicateCheck: true,
   });
 
   const updated = await prisma.grocerySubscription.findUnique({
@@ -112,17 +131,18 @@ export async function enrollCustomerMembership(data: {
 
   return {
     subscription: updated!,
-    firstOrder: delivery.order,
-    firstPayment: delivery.payment,
+    checkoutIntentId: delivery.intent.id,
+    firstOrder: null,
+    firstPayment: null,
     pricing,
     deliverySchedule: deliveryDayLabel(
       frequency,
-      data.preferredDayOfWeek,
-      data.preferredDayOfMonth,
+      preferredDayOfWeek,
+      data.plan === "MONTHLY" && preferredDayOfWeek == null ? preferredDayOfMonth : null,
       locale
     ),
     message:
-      `${locale === "sw" ? "Uanachama" : "Membership"} ${planMeta.label[locale]} — ${deliveryDayLabel(frequency, data.preferredDayOfWeek, data.preferredDayOfMonth, locale) ?? ""}. ` +
+      `${locale === "sw" ? "Uanachama" : "Membership"} ${planMeta.label[locale]} — ${deliveryDayLabel(frequency, preferredDayOfWeek, data.plan === "MONTHLY" && preferredDayOfWeek == null ? preferredDayOfMonth : null, locale) ?? ""}. ` +
       (pricing.discountAmount > 0 || pricing.freeDelivery
         ? (locale === "sw" ? "Malipo ya mbele" : "Upfront") +
           `: TZS ${pricing.total.toLocaleString()}` +

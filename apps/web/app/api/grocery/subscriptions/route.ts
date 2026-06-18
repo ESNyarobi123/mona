@@ -1,8 +1,6 @@
 import { createSubscriptionSchema } from "@monana/types";
 import { enrollSubscription, listUserSubscriptions, listAllSubscriptions, listSubscriptionsPaginated } from "@monana/grocery";
 import { parsePagination } from "@monana/utils";
-import { prisma } from "@monana/db";
-import { notifyAdminNewOrder, notifyCustomerOrderReceived } from "../../../../lib/whatsapp";
 import { handle, ok, parseBody } from "../../../../lib/api";
 import { ApiError, getAuth, isBotChannel, requireAdmin, requireSelfAdminOrBot } from "../../../../lib/auth";
 
@@ -44,38 +42,6 @@ export function POST(req: Request) {
     requireSelfAdminOrBot(req, input.userId);
 
     const result = await enrollSubscription(input);
-
-    if (result.firstOrder) {
-      const user = await prisma.user.findUnique({ where: { id: input.userId } });
-      const orderDetail = await prisma.order.findUnique({
-        where: { id: result.firstOrder.id },
-        include: { items: true },
-      });
-      if (user && orderDetail) {
-        await notifyAdminNewOrder({
-          id: orderDetail.id,
-          module: "GROCERY",
-          channel: orderDetail.channel,
-          total: Number(orderDetail.total),
-          address: orderDetail.address,
-          mealSlot: null,
-          customer: user,
-          items: orderDetail.items.map((i) => ({
-            name: i.name,
-            quantity: Number(i.quantity),
-            price: Number(i.price),
-          })),
-        });
-        if (user.phone) {
-          await notifyCustomerOrderReceived({
-            phone: user.phone,
-            orderId: orderDetail.id,
-            total: Number(orderDetail.total),
-          });
-        }
-      }
-    }
-
     return ok(result, 201);
   });
 }

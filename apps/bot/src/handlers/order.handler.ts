@@ -27,7 +27,14 @@ import {
   handlePackageDay,
   handlePackageAddress,
   handleManageSubscription,
+  renderWeeklyDeliverySlotsForOnDemand,
 } from "./grocery.handler";
+import {
+  showRestaurantHub,
+  handleRestaurantHub,
+  handleRestaurantMembershipSlots,
+  handleRestaurantMembershipAddress,
+} from "./restaurant.handler";
 import { sendPaymentRequest, finishPaymentProof } from "./payment.handler";
 import { formatTZS, numberedList } from "../utils/formatter";
 
@@ -75,6 +82,10 @@ export async function handleMessage(incoming: IncomingMessage, reply: Reply): Pr
     return handleEditBasketStart(phone, reply);
   }
 
+  if (matchesKeyword(lower, BOT_KEYWORDS.payDelivery)) {
+    return handlePayDeliveryOrder(phone, reply);
+  }
+
   switch (session.state) {
     case "MENU":
       return handleMenu(phone, lower, reply);
@@ -88,12 +99,24 @@ export async function handleMessage(incoming: IncomingMessage, reply: Reply): Pr
       return handleMembershipPlan(phone, lower, reply);
     case "CHOOSING_MEMBERSHIP_DAY":
       return handleMembershipDay(phone, lower, reply);
+    case "ASK_GROCERY_DELIVERY":
+      return handleGroceryDelivery(phone, lower, reply);
     case "ASK_ADDRESS":
       return handleAddress(phone, text, reply);
+    case "ASK_PAYMENT_TIMING":
+      return handlePaymentTiming(phone, lower, reply);
+    case "CHOOSING_PAY_ORDER":
+      return handleChoosingPayOrder(phone, lower, reply);
     case "ASK_SUB_ADDRESS":
       return handleSubAddress(phone, text, reply);
     case "AWAIT_PAYMENT":
       return handleAwaitingPayment(phone, text, reply);
+    case "CHOOSING_RESTAURANT_HUB":
+      return handleRestaurantHub(phone, lower, reply);
+    case "CHOOSING_RESTAURANT_MEMBERSHIP_SLOTS":
+      return handleRestaurantMembershipSlots(phone, text, reply);
+    case "ASK_RESTAURANT_MEMBERSHIP_ADDRESS":
+      return handleRestaurantMembershipAddress(phone, text, reply);
     case "CHOOSING_GROCERY":
       return handleGroceryHub(phone, lower, reply);
     case "MANAGING_SUBSCRIPTION":
@@ -203,27 +226,8 @@ async function handleMenu(phone: string, choice: string, reply: Reply) {
   }
 
   switch (action) {
-    case "RESTAURANT": {
-      const slots = await api.listSlots(locale);
-      patchSession(phone, "CHOOSING_SLOT", { module: "RESTAURANT", cart: [] });
-      const lines = slots.map((s, i) => {
-        const status =
-          s.status === "OPEN"
-            ? locale === "sw"
-              ? "🟢 Wazi"
-              : "🟢 Open"
-            : locale === "sw"
-              ? "🔴 Imefungwa"
-              : "🔴 Closed";
-        return `${i + 1}. ${s.label} — ${s.deliversFor}\n   ${locale === "sw" ? "Oda" : "Order"}: ${s.orderWindow} · ${status}`;
-      });
-      return reply(
-        withBack(
-          phone,
-          `${moduleLabel("RESTAURANT", locale).emoji} *${moduleLabel("RESTAURANT", locale).title}*\n${lines.join("\n")}\n\n${locale === "sw" ? "👉 Andika namba ya dirisha." : "👉 Reply with a slot number."}`
-        )
-      );
-    }
+    case "RESTAURANT":
+      return showRestaurantHub(phone, reply);
     case "GROCERY":
       return showGroceryHub(phone, reply);
     case "GROCERY_ON_DEMAND":
@@ -314,11 +318,18 @@ async function handleSlotChoice(phone: string, choice: string, reply: Reply) {
 async function handleMembershipPlan(phone: string, choice: string, reply: Reply) {
   const plan = choice === "1" ? "WEEKLY" : choice === "2" ? "MONTHLY" : null;
   if (!plan) return reply(msg(phone, "membershipChoosePlan"));
-  patchSession(phone, "CHOOSING_MEMBERSHIP_DAY", { membershipPlan: plan });
+  const locale = sessionLocale(phone);
+  const setup = await api.getMembershipSetup(locale);
+  patchSession(phone, "CHOOSING_MEMBERSHIP_DAY", {
+    membershipPlan: plan,
+    deliverySlots: plan === "WEEKLY" ? setup.deliveryDays?.weekly ?? [] : undefined,
+  });
   return reply(
     withBack(
       phone,
-      plan === "WEEKLY" ? msg(phone, "membershipChooseDayWeekly") : msg(phone, "membershipChooseDayMonthly")
+      plan === "WEEKLY"
+        ? renderWeeklyDeliverySlotsForOnDemand(phone, setup.deliveryDays?.weekly ?? [], locale)
+        : msg(phone, "membershipChooseDayRecurring")
     )
   );
 }
@@ -329,38 +340,39 @@ async function handleMembershipDay(phone: string, input: string, reply: Reply) {
   const plan = session.data.membershipPlan;
   if (!plan) return reply(msg(phone, "fallback"));
 
+  let preferredDayOfWeek: number | undefined;
+  let scheduledDeliveryDate: string | undefined;
+
   if (plan === "WEEKLY") {
-    const dayMap: Record<string, number> = { "1": 0, "2": 1, "3": 2, "4": 3, "5": 4, "6": 5, "7": 6 };
+    const slots = session.data.deliverySlots ?? [];
+    const slot = slots[Number(input) - 1];
+    if (!slot) {
+      return reply(
+        withBack(phone, renderWeeklyDeliverySlotsForOnDemand(phone, slots, locale))
+      );
+    }
+    preferredDayOfWeek = slot.dayOfWeek;
+    scheduledDeliveryDate = slot.date;
+  } else {
+    const dayMap: Record<string, number> = { "1": 3, "2": 6 };
     const dow = dayMap[input];
-    if (dow == null) return reply(msg(phone, "membershipChooseDayWeekly"));
-    const setup = await api.getMembershipSetup(locale);
-    patchSession(phone, "CHOOSING", {
-      module: "GROCERY",
-      groceryProducts: setup.products,
-      cart: [],
-      membershipMode: true,
-      preferredDayOfWeek: dow,
-    });
-    const schedule =
-      locale === "sw" ? `Kila ${dayOfWeekLabel(dow, "sw")}` : `Every ${dayOfWeekLabel(dow, "en")}`;
-    return reply(
-      `✅ ${locale === "sw" ? "Utoaji" : "Delivery"}: *${schedule}*\n\n${msg(phone, "membershipBasketHint")}\n${renderProductList(setup.products, locale)}`
-    );
+    if (dow == null) return reply(withBack(phone, msg(phone, "membershipChooseDayRecurring")));
+    preferredDayOfWeek = dow;
   }
 
-  const dom = Number(input);
-  if (!Number.isInteger(dom) || dom < 1 || dom > 28) {
-    return reply(msg(phone, "membershipChooseDayMonthly"));
-  }
-  const setup = await api.getMembershipSetup();
+  const setup = await api.getMembershipSetup(locale);
   patchSession(phone, "CHOOSING", {
     module: "GROCERY",
     groceryProducts: setup.products,
     cart: [],
     membershipMode: true,
-    preferredDayOfMonth: dom,
+    preferredDayOfWeek,
+    scheduledDeliveryDate,
   });
-  const schedule = locale === "sw" ? `Tarehe ${dom} kwa mwezi` : `Day ${dom} of each month`;
+  const schedule =
+    locale === "sw"
+      ? `Kila ${dayOfWeekLabel(preferredDayOfWeek!, "sw")}`
+      : `Every ${dayOfWeekLabel(preferredDayOfWeek!, "en")}`;
   return reply(
     `✅ ${locale === "sw" ? "Utoaji" : "Delivery"}: *${schedule}*\n\n${msg(phone, "membershipBasketHint")}\n${renderProductList(setup.products, locale)}`
   );
@@ -376,6 +388,15 @@ async function handleChoosing(phone: string, input: string, reply: Reply) {
     if (!session.data.cart.length) return reply(msg(phone, "cartEmptyHint"));
     if (session.data.activeSubscriptionId) {
       return handleEditBasketFinish(phone, reply);
+    }
+    if (session.data.module === "GROCERY" && !session.data.membershipMode) {
+      const catalog = await api.getOnDemandCatalog();
+      patchSession(phone, "ASK_GROCERY_DELIVERY", {
+        deliverySlots: catalog.deliverySlots ?? [],
+      });
+      return reply(
+        `${cartSummary(session.data.cart, locale)}\n\n${renderWeeklyDeliverySlotsForOnDemand(phone, catalog.deliverySlots ?? [], locale)}`
+      );
     }
     patchSession(phone, session.data.membershipMode ? "ASK_SUB_ADDRESS" : "ASK_ADDRESS");
     return reply(`${cartSummary(session.data.cart, locale)}\n\n${msg(phone, "addressHint")}`);
@@ -415,10 +436,24 @@ async function handleChoosing(phone: string, input: string, reply: Reply) {
   );
 }
 
+async function handleGroceryDelivery(phone: string, input: string, reply: Reply) {
+  const session = getSession(phone);
+  const locale = sessionLocale(phone);
+  const slots = session.data.deliverySlots ?? [];
+  const slot = slots[Number(input) - 1];
+  if (!slot) {
+    return reply(
+      withBack(phone, renderWeeklyDeliverySlotsForOnDemand(phone, slots, locale))
+    );
+  }
+  patchSession(phone, "ASK_ADDRESS", { scheduledFor: slot.deliveryAt });
+  return reply(msg(phone, "addressHint"));
+}
+
 async function handleAddress(phone: string, address: string, reply: Reply) {
   const session = getSession(phone);
   const locale = sessionLocale(phone);
-  const { userId, module, cart, mealSlot, activeSubscriptionId } = session.data;
+  const { userId, module, cart, activeSubscriptionId } = session.data;
 
   if (activeSubscriptionId && cart.length) {
     await api.updateSubscriptionBasket(
@@ -434,21 +469,156 @@ async function handleAddress(phone: string, address: string, reply: Reply) {
     return reply(msg(phone, "fallback"));
   }
 
-  const order = await api.createOrder({
+  const items = cart.map((c) => ({
+    productId: c.productId,
+    menuItemId: c.menuItemId,
+    quantity: c.quantity,
+  }));
+
+  let summary = "";
+  try {
+    const quote = await api.quoteDelivery({ module, address, items });
+    const deliveryLine = quote.freeDelivery
+      ? locale === "sw"
+        ? "🚚 Uwasilishaji: *BURE*"
+        : "🚚 Delivery: *FREE*"
+      : locale === "sw"
+        ? `🚚 Uwasilishaji: *${formatTZS(quote.deliveryFee)}*`
+        : `🚚 Delivery: *${formatTZS(quote.deliveryFee)}*`;
+    const goodsLine =
+      locale === "sw"
+        ? `🧾 Bidhaa: *${formatTZS(quote.subtotal)}*`
+        : `🧾 Items: *${formatTZS(quote.subtotal)}*`;
+    const totalLine =
+      locale === "sw"
+        ? `💰 *Jumla: ${formatTZS(quote.total)}*`
+        : `💰 *Total: ${formatTZS(quote.total)}*`;
+    const freeHint =
+      quote.amountToFreeDelivery && quote.amountToFreeDelivery > 0
+        ? locale === "sw"
+          ? `\n_Ongeza ${formatTZS(quote.amountToFreeDelivery)} zaidi → usafiri bure_`
+          : `\n_Add ${formatTZS(quote.amountToFreeDelivery)} more for free delivery_`
+        : "";
+    summary = `\n\n${goodsLine}\n${deliveryLine}\n${totalLine}${freeHint}`;
+  } catch {
+    summary = "";
+  }
+
+  patchSession(phone, "ASK_PAYMENT_TIMING", { address });
+  return reply(`${msg(phone, "paymentTimingPrompt")}${summary}`);
+}
+
+async function handlePaymentTiming(phone: string, input: string, reply: Reply) {
+  const session = getSession(phone);
+  const locale = sessionLocale(phone);
+  const { userId, module, cart, mealSlot, scheduledFor, address } = session.data;
+
+  if (!userId || !module || !cart.length || !address) {
+    clearSession(phone);
+    return reply(msg(phone, "fallback"));
+  }
+
+  const items = cart.map((c) => ({
+    productId: c.productId,
+    menuItemId: c.menuItemId,
+    quantity: c.quantity,
+  }));
+
+  if (input === "2") {
+    const order = await api.createOrder({
+      userId,
+      module,
+      address,
+      mealSlot,
+      scheduledFor,
+      items,
+      paymentTiming: "PAY_ON_DELIVERY",
+    });
+    patchSession(phone, "MENU", {
+      cart: [],
+      membershipMode: false,
+      scheduledFor: undefined,
+      address: undefined,
+    });
+    return reply(
+      botMessage(locale, "payLaterPlaced", { ref: `#${order.id.slice(-6).toUpperCase()}` })
+    );
+  }
+
+  if (input !== "1") {
+    return reply(withBack(phone, msg(phone, "paymentTimingPrompt")));
+  }
+
+  const checkout = await api.createOrder({
     userId,
     module,
     address,
     mealSlot,
-    items: cart.map((c) => ({
-      productId: c.productId,
-      menuItemId: c.menuItemId,
-      quantity: c.quantity,
-    })),
+    scheduledFor,
+    items,
+    paymentTiming: "PAY_NOW",
   });
 
   const { title, emoji } = moduleLabel(module, locale);
   const heading = `${botMessage(locale, "orderReceived")}\n${emoji} *${title}*`;
-  return sendPaymentRequest(phone, order.id, Number(order.total), reply, heading);
+  return sendPaymentRequest(phone, checkout.id, Number(checkout.total), reply, heading, { isIntent: true });
+}
+
+function eligiblePayOnDeliveryOrders(
+  orders: Awaited<ReturnType<typeof api.getUserOrders>>
+) {
+  return orders.filter(
+    (o) =>
+      o.paymentTiming === "PAY_ON_DELIVERY" &&
+      !o.submittedAt &&
+      ["ON_THE_WAY", "DELIVERED"].includes(o.status) &&
+      (!o.payment || ["PENDING", "FAILED"].includes(o.payment.status))
+  );
+}
+
+async function handlePayDeliveryOrder(phone: string, reply: Reply) {
+  const locale = sessionLocale(phone);
+  const { userId } = getSession(phone).data;
+  if (!userId) return reply(msg(phone, "chooseAgain"));
+
+  const orders = eligiblePayOnDeliveryOrders(await api.getUserOrders(userId));
+  if (!orders.length) return reply(msg(phone, "noOrdersToPay"));
+
+  if (orders.length === 1) {
+    const order = orders[0];
+    const heading =
+      locale === "sw"
+        ? `💳 *Lipa oda* #${order.id.slice(-6).toUpperCase()}`
+        : `💳 *Pay order* #${order.id.slice(-6).toUpperCase()}`;
+    return sendPaymentRequest(phone, order.id, Number(order.total), reply, heading, { isIntent: false });
+  }
+
+  patchSession(phone, "CHOOSING_PAY_ORDER", {
+    payOrders: orders.map((o) => ({ id: o.id, total: String(o.total), status: o.status })),
+  });
+  const lines = orders.map(
+    (o, i) => `${i + 1}. #${o.id.slice(-6).toUpperCase()} • ${o.status} • ${formatTZS(Number(o.total))}`
+  );
+  return reply(`${msg(phone, "payDeliveryChoose")}\n\n${lines.join("\n")}`);
+}
+
+async function handleChoosingPayOrder(phone: string, input: string, reply: Reply) {
+  const session = getSession(phone);
+  const locale = sessionLocale(phone);
+  const orders = session.data.payOrders ?? [];
+  const order = orders[Number(input) - 1];
+  if (!order) {
+    const lines = orders.map(
+      (o, i) => `${i + 1}. #${o.id.slice(-6).toUpperCase()} • ${o.status} • ${formatTZS(Number(o.total))}`
+    );
+    return reply(withBack(phone, `${msg(phone, "payDeliveryChoose")}\n\n${lines.join("\n")}`));
+  }
+
+  const heading =
+    locale === "sw"
+      ? `💳 *Lipa oda* #${order.id.slice(-6).toUpperCase()}`
+      : `💳 *Pay order* #${order.id.slice(-6).toUpperCase()}`;
+  return sendPaymentRequest(phone, order.id, Number(order.total), reply, heading, { isIntent: false });
 }
 
 async function handleEditBasketFinish(phone: string, reply: Reply) {
@@ -467,7 +637,7 @@ async function handleEditBasketFinish(phone: string, reply: Reply) {
 async function handleSubAddress(phone: string, address: string, reply: Reply) {
   const session = getSession(phone);
   const locale = sessionLocale(phone);
-  const { userId, membershipPlan, preferredDayOfWeek, preferredDayOfMonth, cart } = session.data;
+  const { userId, membershipPlan, preferredDayOfWeek, scheduledDeliveryDate, cart } = session.data;
   if (!userId || !membershipPlan || !cart.length) {
     clearSession(phone);
     return reply(msg(phone, "fallback"));
@@ -477,8 +647,8 @@ async function handleSubAddress(phone: string, address: string, reply: Reply) {
     userId,
     plan: membershipPlan,
     address,
-    preferredDayOfWeek,
-    preferredDayOfMonth,
+    preferredDayOfWeek: membershipPlan === "MONTHLY" ? preferredDayOfWeek : undefined,
+    scheduledDeliveryDate: membershipPlan === "WEEKLY" ? scheduledDeliveryDate : undefined,
     defaultBasket: cart.map((c) => ({ productId: c.productId!, quantity: c.quantity })),
     startNow: true,
   });
@@ -492,14 +662,30 @@ async function handleSubAddress(phone: string, address: string, reply: Reply) {
         ? "Kila Mwezi"
         : "Monthly";
 
+  const perks: string[] = [];
+  if (result.pricing?.discountAmount) {
+    perks.push(`💸 ${result.pricing.discountPercent}% ${locale === "sw" ? "punguzo" : "off"}`);
+  }
+  if (result.pricing?.freeDelivery) {
+    perks.push(`🚚 ${locale === "sw" ? "Uwasilishaji BURE" : "FREE delivery"}`);
+  }
+
+  if (result.checkoutIntentId) {
+    const heading = botMessage(locale, "membershipReady", {
+      plan: planLabel,
+      schedule: result.deliverySchedule ?? "",
+    });
+    return sendPaymentRequest(
+      phone,
+      result.checkoutIntentId,
+      Number(result.pricing?.total ?? 0),
+      reply,
+      heading + (perks.length ? `\n${perks.join("  ·  ")}` : ""),
+      { isIntent: true }
+    );
+  }
+
   if (result.firstOrder && result.firstPayment) {
-    const perks: string[] = [];
-    if (result.pricing?.discountAmount) {
-      perks.push(`💸 ${result.pricing.discountPercent}% ${locale === "sw" ? "punguzo" : "off"}`);
-    }
-    if (result.pricing?.freeDelivery) {
-      perks.push(`🚚 ${locale === "sw" ? "Uwasilishaji BURE" : "FREE delivery"}`);
-    }
     const heading =
       botMessage(locale, "membershipReady", {
         plan: planLabel,

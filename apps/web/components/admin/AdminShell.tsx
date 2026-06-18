@@ -66,6 +66,7 @@ export function AdminShell({
         label: t("navRestaurant"),
         items: [
           { href: "/admin/restaurant", label: t("overview"), icon: <IconDashboard />, exact: true },
+          { href: "/admin/restaurant/membership", label: t("membership"), icon: <IconSubscription /> },
           { href: "/admin/restaurant/slots", label: t("slots"), icon: <IconClock /> },
           { href: "/admin/restaurant/categories", label: t("categories"), icon: <IconCategory /> },
           { href: "/admin/restaurant/menus", label: t("menuBoards"), icon: <IconPackage /> },
@@ -73,6 +74,7 @@ export function AdminShell({
           { href: "/admin/restaurant/kitchen", label: t("kitchen"), icon: <IconKitchen /> },
           { href: "/admin/restaurant/hot", label: t("hotPick"), icon: <IconSparkle /> },
           { href: "/admin/restaurant/settings", label: t("restaurantSettings"), icon: <IconSettings /> },
+          { href: "/admin/restaurant/delivery", label: t("deliveryPricingRestaurant"), icon: <IconReports /> },
         ],
       },
       {
@@ -96,9 +98,10 @@ export function AdminShell({
           { href: "/admin/grocery/units", label: t("units"), icon: <IconUnits /> },
           { href: "/admin/grocery/products", label: t("products"), icon: <IconProducts /> },
           { href: "/admin/grocery/packages", label: t("packages"), icon: <IconPackage /> },
-          { href: "/admin/grocery/membership", label: t("membership"), icon: <IconPayments /> },
+          { href: "/admin/grocery/membership", label: t("subscriptionPlans"), icon: <IconPayments /> },
           { href: "/admin/grocery/subscriptions", label: t("subscriptions"), icon: <IconSubscription /> },
           { href: "/admin/grocery/hot", label: t("hotPick"), icon: <IconSparkle /> },
+          { href: "/admin/grocery/delivery", label: t("deliveryPricingGrocery"), icon: <IconReports /> },
         ],
       },
       {

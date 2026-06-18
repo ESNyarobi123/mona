@@ -12,6 +12,7 @@ export {
   enrollSubscription,
   processDueSubscriptions,
   createSubscriptionDelivery,
+  createSubscriptionCheckoutIntent,
   createSubscriptionPrepayOrder,
   activateSubscriptionAfterPayment,
   pauseSubscription,

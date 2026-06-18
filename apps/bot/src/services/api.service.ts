@@ -39,6 +39,10 @@ export type BotMenuResponse = {
 export type MembershipSetup = {
   plans: { id: "WEEKLY" | "MONTHLY"; title: string; label: string; discountPercent: number; freeDelivery: boolean }[];
   products: GroceryProduct[];
+  deliveryDays?: {
+    weekly: { date: string; dayOfWeek: number; label: string; deliveryAt: string; weekLabel: string }[];
+    monthly: { hint: string; recurring: { value: number; label: string }[] };
+  };
 };
 
 export type GroceryHome = {
@@ -58,7 +62,7 @@ export type GroceryHome = {
     nextRunAt: string | null;
     address: string;
   } | null;
-  pendingPayment: { orderId: string; paymentId: string; amount: string } | null;
+  pendingPayment: { orderId?: string; intentId?: string; paymentId?: string; amount: string } | null;
   canEnroll: boolean;
 };
 
@@ -85,23 +89,29 @@ export const api = {
     request<BotMenuResponse>(`/bot/menu?locale=${locale}`),
 
   getOnDemandCatalog: () =>
-    request<{ products: GroceryProduct[] }>("/grocery/store/on-demand"),
+    request<{
+      products: GroceryProduct[];
+      deliverySlots: { date: string; dayOfWeek: number; label: string; deliveryAt: string; weekLabel: string }[];
+    }>("/grocery/store/on-demand"),
 
   getGroceryHome: (userId: string, locale: "en" | "sw" = "en") =>
     request<GroceryHome>(`/grocery/store/home?userId=${userId}&locale=${locale}`),
 
-  enrollPackage: (body: {
+    enrollPackage: (body: {
     userId: string;
     packageId: string;
     address: string;
     preferredDayOfWeek?: number;
     preferredDayOfMonth?: number;
+    scheduledDeliveryDate?: string;
     startNow?: boolean;
   }) =>
     request<{
       subscription: { id: string; status: string };
+      checkoutIntentId?: string;
       firstOrder: { id: string; total: string } | null;
       firstPayment: { id: string } | null;
+      pricing?: { total: number; discountPercent: number; discountAmount: number; freeDelivery: boolean };
     }>("/grocery/subscriptions", {
       method: "POST",
       body: JSON.stringify({ ...body, channel: "WHATSAPP", startNow: body.startNow ?? true }),
@@ -116,11 +126,13 @@ export const api = {
     address: string;
     preferredDayOfWeek?: number;
     preferredDayOfMonth?: number;
+    scheduledDeliveryDate?: string;
     defaultBasket: { productId: string; quantity: number }[];
     startNow?: boolean;
   }) =>
     request<{
       subscription: { id: string; status: string };
+      checkoutIntentId?: string;
       firstOrder: { id: string; total: string; orderType?: string } | null;
       firstPayment: { id: string } | null;
       pricing?: { total: number; discountPercent: number; discountAmount: number; freeDelivery: boolean };
@@ -174,19 +186,53 @@ export const api = {
     items: { productId?: string; menuItemId?: string; quantity: number }[];
     address?: string;
     mealSlot?: "BREAKFAST" | "LUNCH" | "DINNER";
+    scheduledFor?: string;
+    paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
   }) =>
-    request<{ id: string; total: string }>("/orders", {
+    request<{
+      id: string;
+      kind?: "CHECKOUT_INTENT" | "ORDER";
+      total: string | number;
+      paymentTiming?: string;
+    }>("/orders", {
       method: "POST",
       body: JSON.stringify({ ...body, channel: "WHATSAPP" }),
     }),
 
-  getUserOrders: (userId: string) =>
-    request<Array<{ id: string; module: string; status: string; total: string; orderType?: string | null }>>(
-      `/orders?userId=${userId}`
-    ),
-
-  createPayment: (orderId: string, locale: "en" | "sw" = "en") =>
+  quoteDelivery: (body: {
+    module: BusinessModule;
+    address?: string;
+    items: { productId?: string; menuItemId?: string; quantity: number }[];
+  }) =>
     request<{
+      subtotal: number;
+      deliveryFee: number;
+      total: number;
+      freeDelivery: boolean;
+      amountToFreeDelivery: number | null;
+    }>("/delivery/quote", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  getUserOrders: (userId: string) =>
+    request<
+      Array<{
+        id: string;
+        module: string;
+        status: string;
+        total: string;
+        orderType?: string | null;
+        paymentTiming?: string;
+        submittedAt?: string | null;
+        payment?: { status: string } | null;
+      }>
+    >(`/orders?userId=${userId}`),
+
+  createPayment: (body: { orderId?: string; intentId?: string }, locale: "en" | "sw" = "en") =>
+    request<{
+      kind?: "CHECKOUT_INTENT" | "ORDER";
+      intentId?: string;
       payment: { id: string; amount: string; reference: string };
       instructions: {
         lipaNamba: string;
@@ -197,11 +243,37 @@ export const api = {
         qrPayload?: string;
       };
       qrDataUrl?: string;
-    }>(`/payments?locale=${locale}`, { method: "POST", body: JSON.stringify({ orderId }) }),
+    }>(`/payments?locale=${locale}`, { method: "POST", body: JSON.stringify(body) }),
 
-  submitPayment: (paymentId: string, reference: string) =>
-    request<unknown>("/payments/submit", {
+  submitPayment: (body: { paymentId?: string; intentId?: string; reference: string }) =>
+    request<{ orderId: string }>("/payments/submit", {
       method: "POST",
-      body: JSON.stringify({ paymentId, reference }),
+      body: JSON.stringify(body),
+    }),
+
+  getRestaurantMembershipSetup: (locale: "en" | "sw" = "en") =>
+    request<{
+      slots: { slot: string; label: string; emoji: string }[];
+      hint: string;
+    }>(`/restaurant/store/membership?locale=${locale}`),
+
+  getRestaurantMembership: (userId: string) =>
+    request<
+      Array<{
+        id: string;
+        status: string;
+        mealSlots: ("BREAKFAST" | "LUNCH" | "DINNER")[];
+        address: string | null;
+      }>
+    >(`/restaurant/store/membership?userId=${userId}`),
+
+  enrollRestaurantMembership: (body: {
+    userId: string;
+    mealSlots: ("BREAKFAST" | "LUNCH" | "DINNER")[];
+    address?: string;
+  }) =>
+    request<{ id: string; mealSlots: string[]; status: string }>("/restaurant/store/membership", {
+      method: "POST",
+      body: JSON.stringify({ ...body, channel: "WHATSAPP" }),
     }),
 };

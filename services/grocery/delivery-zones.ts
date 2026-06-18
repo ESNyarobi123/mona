@@ -5,6 +5,7 @@ export type DeliveryZoneRecord = {
   name: string;
   nameSw: string | null;
   keywords: string[];
+  deliveryFee: number;
   sortOrder: number;
   active: boolean;
 };
@@ -63,19 +64,21 @@ export async function listDeliveryZones(activeOnly = false) {
   return rows.map((z) => ({
     ...z,
     keywords: parseKeywords(z.keywords),
+    deliveryFee: Number(z.deliveryFee),
   }));
 }
 
 export async function getDeliveryZoneById(id: string) {
   const z = await prisma.deliveryZone.findUnique({ where: { id } });
   if (!z) return null;
-  return { ...z, keywords: parseKeywords(z.keywords) };
+  return { ...z, keywords: parseKeywords(z.keywords), deliveryFee: Number(z.deliveryFee) };
 }
 
 export async function createDeliveryZone(data: {
   name: string;
   nameSw?: string;
   keywords: string[];
+  deliveryFee?: number;
   sortOrder?: number;
   active?: boolean;
 }) {
@@ -86,6 +89,7 @@ export async function createDeliveryZone(data: {
       name: data.name.trim(),
       nameSw: data.nameSw?.trim() || null,
       keywords,
+      deliveryFee: data.deliveryFee ?? 0,
       sortOrder: data.sortOrder ?? 0,
       active: data.active ?? true,
     },
@@ -98,6 +102,7 @@ export async function updateDeliveryZone(
     name: string;
     nameSw: string | null;
     keywords: string[];
+    deliveryFee: number;
     sortOrder: number;
     active: boolean;
   }>
@@ -110,6 +115,7 @@ export async function updateDeliveryZone(
     if (!keywords.length) throw new Error("Ongeza angalau neno moja la kutambua eneo");
     patch.keywords = keywords;
   }
+  if (data.deliveryFee !== undefined) patch.deliveryFee = data.deliveryFee;
   if (data.sortOrder !== undefined) patch.sortOrder = data.sortOrder;
   if (data.active !== undefined) patch.active = data.active;
   return prisma.deliveryZone.update({ where: { id }, data: patch });
@@ -126,24 +132,28 @@ export async function seedDefaultDeliveryZones() {
       name: "Kinondoni",
       nameSw: "Kinondoni",
       keywords: ["kinondoni", "kunduchi", "mbezi", "wazo", "makumbusho", "mabibo", "sinza"],
+      deliveryFee: 3000,
       sortOrder: 10,
     },
     {
       name: "Masaki",
       nameSw: "Masaki",
       keywords: ["masaki", "slipway", "msasani", " oyster", "oysterbay", "ada estate"],
+      deliveryFee: 5000,
       sortOrder: 20,
     },
     {
       name: "Tabata",
       nameSw: "Tabata",
       keywords: ["tabata", "segerea", "buguruni", "gongolamboto", "kivukoni", "kigogo"],
+      deliveryFee: 3500,
       sortOrder: 30,
     },
     {
       name: "City Centre",
       nameSw: "Kati ya Jiji",
       keywords: ["kariakoo", "posta", "city centre", "city center", "kivukoni", "magomeni mapya"],
+      deliveryFee: 2500,
       sortOrder: 40,
     },
   ];

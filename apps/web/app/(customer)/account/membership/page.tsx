@@ -1,7 +1,5 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { MembershipDashboardView } from "../../../../components/customer/MembershipDashboardView";
-
-export default function AccountMembershipPage() {
-  return <MembershipDashboardView />;
+export default function LegacyMembershipPage() {
+  redirect("/account/subscription");
 }

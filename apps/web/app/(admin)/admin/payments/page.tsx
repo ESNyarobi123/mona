@@ -7,6 +7,7 @@ import { apiGet, apiPost, normalizeApiList } from "../../../../lib/admin-api";
 import { formatMoney } from "../../../../lib/format";
 import { orderRef, userInitials } from "../../../../lib/admin-dashboard";
 import { paymentStatusLabel } from "../../../../lib/admin-i18n";
+import type { AdminMessageKey } from "../../../../lib/admin-i18n";
 import { StatusBadge } from "../../../../components/admin/StatusBadge";
 import { AdminPageHeader } from "../../../../components/admin/AdminPageHeader";
 import { AdminPanel } from "../../../../components/admin/dashboard/AdminPanel";
@@ -23,7 +24,13 @@ type Payment = {
   orderId: string;
   createdAt: string;
   user: { name: string | null; phone: string };
-  order: { id: string; module: string; total: string | number };
+  order: {
+    id: string;
+    module: string;
+    total: string | number;
+    paymentTiming?: string;
+    submittedAt?: string | null;
+  };
 };
 
 type PaymentsResponse = Payment[] | { items: Payment[]; meta: { total: number } };
@@ -50,6 +57,126 @@ function moduleIcon(module: string) {
 
 function statusPillClass(status: string) {
   return status.toLowerCase().replace(/_/g, "-");
+}
+
+type PaymentGridProps = {
+  items: Payment[];
+  busyId: string | null;
+  locale: "en" | "sw";
+  t: (key: AdminMessageKey) => string;
+  onSelect: (payment: Payment) => void;
+  onConfirm: (paymentId: string, action: "confirm" | "reject", payOnDelivery?: boolean) => void;
+};
+
+function PaymentGrid({ items, busyId, locale, t, onSelect, onConfirm }: PaymentGridProps) {
+  return (
+    <ul className="admin-payment-grid">
+      {items.map((p) => {
+        const busy = busyId === p.id;
+        const needsAction = p.status === "AWAITING_CONFIRMATION";
+        const payOnDelivery = p.order.paymentTiming === "PAY_ON_DELIVERY" && !p.order.submittedAt;
+
+        return (
+          <li
+            key={p.id}
+            className={`admin-payment-card admin-payment-card--${statusPillClass(p.status)} admin-payment-card--${p.order.module.toLowerCase()}`}
+          >
+            <div className="admin-payment-card__accent" aria-hidden />
+
+            <header className="admin-payment-card__head">
+              <div className="admin-payment-card__ref">
+                <span className="admin-payment-card__icon" aria-hidden>
+                  💳
+                </span>
+                <div>
+                  <strong>{paymentRef(p.id)}</strong>
+                  <span className="admin-order-date">{formatPaymentDate(p.createdAt, locale)}</span>
+                </div>
+              </div>
+              <span className={`admin-payment-status-pill admin-payment-status-pill--${statusPillClass(p.status)}`}>
+                {paymentStatusLabel(locale, p.status)}
+              </span>
+            </header>
+
+            <div className="admin-payment-card__reference">
+              <span className="admin-payment-card__reference-label">{t("reference")}</span>
+              {p.reference ? (
+                <code className="admin-payment-ref admin-payment-ref--card">{p.reference}</code>
+              ) : (
+                <span className="admin-payment-ref admin-payment-ref--empty">{t("noReference")}</span>
+              )}
+            </div>
+
+            <div className="admin-payment-card__customer">
+              <span className="admin-order-card__avatar" aria-hidden>
+                {userInitials(p.user.name, p.user.phone)}
+              </span>
+              <div className="admin-order-card__customer-copy">
+                <strong>{p.user.name?.trim() || p.user.phone}</strong>
+                <small>{p.user.phone}</small>
+              </div>
+            </div>
+
+            <div className="admin-payment-card__order">
+              <span className="admin-payment-card__order-icon" aria-hidden>
+                {moduleIcon(p.order.module)}
+              </span>
+              <div className="admin-payment-card__order-copy">
+                <span className="admin-payment-card__order-label">{t("linkedOrder")}</span>
+                <strong>{orderRef(p.order.id)}</strong>
+              </div>
+              <StatusBadge status={p.order.module} />
+            </div>
+
+            <div className="admin-payment-card__amount">
+              <span>{t("amount")}</span>
+              <strong>{formatMoney(p.amount)}</strong>
+              {Number(p.order.total) !== Number(p.amount) ? (
+                <small>
+                  {t("order")}: {formatMoney(p.order.total)}
+                </small>
+              ) : null}
+            </div>
+
+            {needsAction ? (
+              <div className="admin-payment-card__alert">
+                <span aria-hidden>⏳</span>
+                {payOnDelivery ? t("payOnDeliveryAwaiting") : t("needsAction")}
+              </div>
+            ) : null}
+
+            <footer className="admin-payment-card__foot">
+              <div className="admin-payment-card__actions">
+                <button type="button" className="admin-btn secondary sm" onClick={() => onSelect(p)}>
+                  {t("viewPaymentDetails")}
+                </button>
+                {needsAction ? (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-btn sm"
+                      disabled={busy}
+                      onClick={() => onConfirm(p.id, "confirm", payOnDelivery)}
+                    >
+                      {t("confirm")}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-btn sm danger"
+                      disabled={busy}
+                      onClick={() => onConfirm(p.id, "reject", payOnDelivery)}
+                    >
+                      {t("reject")}
+                    </button>
+                  </>
+                ) : null}
+              </div>
+            </footer>
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 export default function AdminPaymentsPage() {
@@ -88,11 +215,29 @@ export default function AdminPaymentsPage() {
     const paid = payments.filter((p) => p.status === "PAID").length;
     const failed = payments.filter((p) => p.status === "FAILED").length;
     const total = payments.reduce((sum, p) => sum + Number(p.amount), 0);
-    return { awaiting, paid, failed, total };
+    const restaurant = payments.filter((p) => p.order.module === "RESTAURANT").length;
+    const grocery = payments.filter((p) => p.order.module === "GROCERY").length;
+    return { awaiting, paid, failed, total, restaurant, grocery };
   }, [payments]);
 
-  async function confirmPayment(paymentId: string, action: "confirm" | "reject") {
-    const prompt = action === "confirm" ? t("confirmPaymentPrompt") : t("rejectPaymentPrompt");
+  const restaurantPayments = useMemo(
+    () => payments.filter((p) => p.order.module === "RESTAURANT"),
+    [payments]
+  );
+  const groceryPayments = useMemo(
+    () => payments.filter((p) => p.order.module === "GROCERY"),
+    [payments]
+  );
+
+  async function confirmPayment(paymentId: string, action: "confirm" | "reject", payOnDelivery?: boolean) {
+    const prompt =
+      action === "confirm"
+        ? payOnDelivery
+          ? t("confirmPayOnDeliveryPrompt")
+          : t("confirmPaymentPrompt")
+        : payOnDelivery
+          ? t("rejectPayOnDeliveryPrompt")
+          : t("rejectPaymentPrompt");
     if (!confirm(prompt)) return;
 
     setBusyId(paymentId);
@@ -142,10 +287,10 @@ export default function AdminPaymentsPage() {
           trendUp={false}
         />
         <AdminKpiCard
-          label={t("paidLabel")}
-          value={stats.paid}
-          trend={tf("failedCount", { n: stats.failed })}
-          tone="success"
+          label={t("restaurantPayments")}
+          value={stats.restaurant}
+          trend={tf("groceryCount", { n: stats.grocery })}
+          tone="restaurant"
         />
         <AdminKpiCard
           label={t("totalAmount")}
@@ -187,10 +332,12 @@ export default function AdminPaymentsPage() {
 
       {error && <p className="admin-error">{error}</p>}
 
-      <AdminPanel title={t("paymentsList")} badge={tf("shownCount", { n: payments.length })}>
-        {loading ? (
+      {loading ? (
+        <AdminPanel title={t("paymentsList")}>
           <AdminLoading label={t("loadingPayments")} />
-        ) : payments.length === 0 ? (
+        </AdminPanel>
+      ) : payments.length === 0 ? (
+        <AdminPanel title={t("paymentsList")}>
           <div className="admin-order-empty">
             <span aria-hidden>💳</span>
             <p>
@@ -199,118 +346,54 @@ export default function AdminPaymentsPage() {
                 : t("noPaymentsMatch")}
             </p>
           </div>
-        ) : (
-          <ul className="admin-payment-grid">
-            {payments.map((p) => {
-              const busy = busyId === p.id;
-              const needsAction = p.status === "AWAITING_CONFIRMATION";
+        </AdminPanel>
+      ) : (
+        <div className="admin-payments-sections">
+          <AdminPanel
+            title={t("restaurantPayments")}
+            badge={tf("shownCount", { n: restaurantPayments.length })}
+            className="admin-payments-section admin-payments-section--restaurant"
+          >
+            {restaurantPayments.length === 0 ? (
+              <div className="admin-order-empty admin-order-empty--section">
+                <span aria-hidden>🍽️</span>
+                <p>{t("noRestaurantPayments")}</p>
+              </div>
+            ) : (
+              <PaymentGrid
+                items={restaurantPayments}
+                busyId={busyId}
+                locale={locale}
+                t={t}
+                onSelect={setSelected}
+                onConfirm={confirmPayment}
+              />
+            )}
+          </AdminPanel>
 
-              return (
-                <li
-                  key={p.id}
-                  className={`admin-payment-card admin-payment-card--${statusPillClass(p.status)} admin-payment-card--${p.order.module.toLowerCase()}`}
-                >
-                  <div className="admin-payment-card__accent" aria-hidden />
-
-                  <header className="admin-payment-card__head">
-                    <div className="admin-payment-card__ref">
-                      <span className="admin-payment-card__icon" aria-hidden>
-                        💳
-                      </span>
-                      <div>
-                        <strong>{paymentRef(p.id)}</strong>
-                        <span className="admin-order-date">{formatPaymentDate(p.createdAt, locale)}</span>
-                      </div>
-                    </div>
-                    <span className={`admin-payment-status-pill admin-payment-status-pill--${statusPillClass(p.status)}`}>
-                      {paymentStatusLabel(locale, p.status)}
-                    </span>
-                  </header>
-
-                  <div className="admin-payment-card__reference">
-                    <span className="admin-payment-card__reference-label">{t("reference")}</span>
-                    {p.reference ? (
-                      <code className="admin-payment-ref admin-payment-ref--card">{p.reference}</code>
-                    ) : (
-                      <span className="admin-payment-ref admin-payment-ref--empty">{t("noReference")}</span>
-                    )}
-                  </div>
-
-                  <div className="admin-payment-card__customer">
-                    <span className="admin-order-card__avatar" aria-hidden>
-                      {userInitials(p.user.name, p.user.phone)}
-                    </span>
-                    <div className="admin-order-card__customer-copy">
-                      <strong>{p.user.name?.trim() || p.user.phone}</strong>
-                      <small>{p.user.phone}</small>
-                    </div>
-                  </div>
-
-                  <div className="admin-payment-card__order">
-                    <span className="admin-payment-card__order-icon" aria-hidden>
-                      {moduleIcon(p.order.module)}
-                    </span>
-                    <div className="admin-payment-card__order-copy">
-                      <span className="admin-payment-card__order-label">{t("linkedOrder")}</span>
-                      <strong>{orderRef(p.order.id)}</strong>
-                    </div>
-                    <StatusBadge status={p.order.module} />
-                  </div>
-
-                  <div className="admin-payment-card__amount">
-                    <span>{t("amount")}</span>
-                    <strong>{formatMoney(p.amount)}</strong>
-                    {Number(p.order.total) !== Number(p.amount) ? (
-                      <small>
-                        {t("order")}: {formatMoney(p.order.total)}
-                      </small>
-                    ) : null}
-                  </div>
-
-                  {needsAction ? (
-                    <div className="admin-payment-card__alert">
-                      <span aria-hidden>⏳</span>
-                      {t("needsAction")}
-                    </div>
-                  ) : null}
-
-                  <footer className="admin-payment-card__foot">
-                    <div className="admin-payment-card__actions">
-                      <button
-                        type="button"
-                        className="admin-btn secondary sm"
-                        onClick={() => setSelected(p)}
-                      >
-                        {t("viewPaymentDetails")}
-                      </button>
-                      {needsAction ? (
-                        <>
-                          <button
-                            type="button"
-                            className="admin-btn sm"
-                            disabled={busy}
-                            onClick={() => confirmPayment(p.id, "confirm")}
-                          >
-                            {t("confirm")}
-                          </button>
-                          <button
-                            type="button"
-                            className="admin-btn sm danger"
-                            disabled={busy}
-                            onClick={() => confirmPayment(p.id, "reject")}
-                          >
-                            {t("reject")}
-                          </button>
-                        </>
-                      ) : null}
-                    </div>
-                  </footer>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </AdminPanel>
+          <AdminPanel
+            title={t("groceryPayments")}
+            badge={tf("shownCount", { n: groceryPayments.length })}
+            className="admin-payments-section admin-payments-section--grocery"
+          >
+            {groceryPayments.length === 0 ? (
+              <div className="admin-order-empty admin-order-empty--section">
+                <span aria-hidden>🛒</span>
+                <p>{t("noGroceryPayments")}</p>
+              </div>
+            ) : (
+              <PaymentGrid
+                items={groceryPayments}
+                busyId={busyId}
+                locale={locale}
+                t={t}
+                onSelect={setSelected}
+                onConfirm={confirmPayment}
+              />
+            )}
+          </AdminPanel>
+        </div>
+      )}
 
       {selected ? (
         <div className="admin-modal-overlay admin-modal-overlay--spacious" onClick={() => setSelected(null)}>
@@ -387,7 +470,13 @@ export default function AdminPaymentsPage() {
                         type="button"
                         className="admin-btn"
                         disabled={busyId === selected.id}
-                        onClick={() => confirmPayment(selected.id, "confirm")}
+                        onClick={() =>
+                          confirmPayment(
+                            selected.id,
+                            "confirm",
+                            selected.order.paymentTiming === "PAY_ON_DELIVERY" && !selected.order.submittedAt
+                          )
+                        }
                       >
                         {t("confirm")}
                       </button>
@@ -395,7 +484,13 @@ export default function AdminPaymentsPage() {
                         type="button"
                         className="admin-btn danger"
                         disabled={busyId === selected.id}
-                        onClick={() => confirmPayment(selected.id, "reject")}
+                        onClick={() =>
+                          confirmPayment(
+                            selected.id,
+                            "reject",
+                            selected.order.paymentTiming === "PAY_ON_DELIVERY" && !selected.order.submittedAt
+                          )
+                        }
                       >
                         {t("reject")}
                       </button>

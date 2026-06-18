@@ -294,8 +294,8 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
             <Link
               href={
                 getStoredUser()
-                  ? "/account/membership/enroll"
-                  : "/login?next=/account/membership/enroll"
+                  ? "/account/subscription/enroll"
+                  : "/login?next=/account/subscription/enroll"
               }
               className="landing-btn landing-btn--orange store-card__btn"
             >
@@ -328,8 +328,8 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
               <Link
                 href={
                   getStoredUser()
-                    ? `/account/membership/enroll?packageId=${pkg.id}`
-                    : `/login?next=${encodeURIComponent(`/account/membership/enroll?packageId=${pkg.id}`)}`
+                    ? `/account/subscription/enroll?packageId=${pkg.id}`
+                    : `/login?next=${encodeURIComponent(`/account/subscription/enroll?packageId=${pkg.id}`)}`
                 }
                 className="landing-btn landing-btn--navy store-card__btn"
               >

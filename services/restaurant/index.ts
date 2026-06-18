@@ -117,3 +117,13 @@ export {
   getMealSlotSettingsPayload,
   validateMealSlotWindows,
 } from "./meal-slot-settings";
+export {
+  enrollRestaurantMembership,
+  listRestaurantMemberships,
+  getRestaurantMembershipById,
+  pauseRestaurantMembership,
+  cancelRestaurantMembership,
+  getRestaurantMembershipSetup,
+  assertCanEnrollRestaurantMembership,
+} from "./membership";
+export { processRestaurantSlotReminders } from "./membership-notify";

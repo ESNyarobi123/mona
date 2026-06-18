@@ -1,8 +1,8 @@
 import { createOrderSchema } from "@monana/types";
-import { createOrder, getUserOrders, listOrders } from "@monana/orders";
+import { createCheckoutIntent, createOrder, getUserOrders, listOrders } from "@monana/orders";
 import { prisma } from "@monana/db";
 import { parsePagination } from "@monana/utils";
-import { notifyAdminNewOrder, notifyCustomerOrderReceived } from "../../../lib/whatsapp";
+import { notifyAdminPayOnDeliveryOrder } from "../../../lib/whatsapp";
 import { handle, ok, parseBody } from "../../../lib/api";
 import { ApiError, getAuth, isBotChannel, requireAdmin, requireSelfAdminOrBot } from "../../../lib/auth";
 
@@ -45,7 +45,7 @@ export async function GET(req: Request) {
   });
 }
 
-// POST /api/orders — customer / WhatsApp bot
+// POST /api/orders — stage checkout (Order row created after payment reference)
 export async function POST(req: Request) {
   return handle(async () => {
     const input = await parseBody(req, createOrderSchema);
@@ -60,31 +60,48 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { id: input.userId } });
     if (!user) throw new ApiError("Mtumiaji hajapatikani", 404);
 
-    const order = await createOrder(input);
-
-    await notifyAdminNewOrder({
-      id: order.id,
-      module: order.module,
-      channel: order.channel,
-      total: Number(order.total),
-      address: order.address,
-      mealSlot: order.mealSlot,
-      customer: user,
-      items: order.items.map((i) => ({
-        name: i.name,
-        quantity: Number(i.quantity),
-        price: Number(i.price),
-      })),
-    });
-
-    if (user.phone) {
-      await notifyCustomerOrderReceived({
-        phone: user.phone,
-        orderId: order.id,
+    if (input.paymentTiming === "PAY_ON_DELIVERY") {
+      const order = await createOrder(input);
+      await notifyAdminPayOnDeliveryOrder({
+        id: order.id,
+        module: order.module,
+        channel: order.channel,
         total: Number(order.total),
+        address: order.address,
+        mealSlot: order.mealSlot,
+        customer: order.user ?? user,
+        items: order.items.map((i) => ({
+          name: i.name,
+          quantity: Number(i.quantity),
+          price: Number(i.price),
+        })),
       });
+      return ok(
+        {
+          id: order.id,
+          kind: "ORDER",
+          module: order.module,
+          total: order.total,
+          status: order.status,
+          paymentTiming: order.paymentTiming,
+        },
+        201
+      );
     }
 
-    return ok(order, 201);
+    const intent = await createCheckoutIntent(input);
+
+    return ok(
+      {
+        id: intent.id,
+        kind: "CHECKOUT_INTENT",
+        module: intent.module,
+        total: intent.total,
+        status: "AWAITING_PAYMENT",
+        paymentToken: intent.paymentToken,
+        expiresAt: intent.expiresAt,
+      },
+      201
+    );
   });
 }

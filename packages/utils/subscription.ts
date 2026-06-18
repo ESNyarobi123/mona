@@ -1,4 +1,5 @@
 import type { AppLocale } from "@monana/i18n";
+import { groceryRecurringDeliveryDays } from "./grocery-delivery";
 
 export const DAY_OF_WEEK: Record<AppLocale, Record<number, string>> = {
   en: {
@@ -79,11 +80,9 @@ export const MEMBERSHIP_PLANS = {
 
 export const MAX_MEMBERSHIP_DISCOUNT_PERCENT = 5;
 
+/** @deprecated use groceryRecurringDeliveryDays or getUpcomingGroceryDeliverySlots */
 export function weeklyDeliveryDays(lang: AppLocale = "en") {
-  return Object.entries(DAY_OF_WEEK[lang]).map(([value, label]) => ({
-    value: Number(value),
-    label: lang === "sw" ? `Kila ${label}` : `Every ${label}`,
-  }));
+  return groceryRecurringDeliveryDays(lang);
 }
 
 /** @deprecated use weeklyDeliveryDays */

@@ -27,8 +27,14 @@ type Product = {
 type Setup = {
   plans: Plan[];
   deliveryDays: {
-    weekly: { value: number; label: string }[];
-    monthly: { hint: string; examples: { value: number; label: string }[] };
+    weekly: {
+      date: string;
+      dayOfWeek: number;
+      label: string;
+      deliveryAt: string;
+      weekLabel: string;
+    }[];
+    monthly: { hint: string; recurring: { value: number; label: string }[] };
   };
   products: Product[];
   categories: { id: string; name: string }[];
@@ -69,8 +75,8 @@ export function GroceryMembershipEnrollModal({ onClose, onEnrolled }: Props) {
 
   const [userId, setUserId] = useState("");
   const [plan, setPlan] = useState<"WEEKLY" | "MONTHLY">("WEEKLY");
+  const [selectedSlot, setSelectedSlot] = useState("");
   const [dayWeek, setDayWeek] = useState("6");
-  const [dayMonth, setDayMonth] = useState("15");
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
   const [startNow, setStartNow] = useState(false);
@@ -127,6 +133,13 @@ export function GroceryMembershipEnrollModal({ onClose, onEnrolled }: Props) {
     return () => clearTimeout(timer);
   }, [refreshPreview]);
 
+  useEffect(() => {
+    if (!setup || plan !== "WEEKLY") return;
+    if (!selectedSlot && setup.deliveryDays.weekly[0]) {
+      setSelectedSlot(setup.deliveryDays.weekly[0].date);
+    }
+  }, [setup, plan, selectedSlot]);
+
   const filteredProducts = useMemo(() => {
     if (!setup) return [];
     const q = productSearch.trim().toLowerCase();
@@ -158,8 +171,8 @@ export function GroceryMembershipEnrollModal({ onClose, onEnrolled }: Props) {
         plan,
         address: address.trim(),
         channel: "WEB",
-        preferredDayOfWeek: plan === "WEEKLY" ? Number(dayWeek) : undefined,
-        preferredDayOfMonth: plan === "MONTHLY" ? Number(dayMonth) : undefined,
+        preferredDayOfWeek: plan === "MONTHLY" ? Number(dayWeek) : undefined,
+        scheduledDeliveryDate: plan === "WEEKLY" ? selectedSlot || undefined : undefined,
         defaultBasket: basketPayload,
         note: note.trim() || undefined,
         startNow,
@@ -236,28 +249,32 @@ export function GroceryMembershipEnrollModal({ onClose, onEnrolled }: Props) {
                   {plan === "WEEKLY" ? (
                     <select
                       className="admin-select"
-                      value={dayWeek}
-                      onChange={(e) => setDayWeek(e.target.value)}
+                      value={selectedSlot}
+                      onChange={(e) => setSelectedSlot(e.target.value)}
                       required
                     >
-                      {setup.deliveryDays.weekly.map((d) => (
-                        <option key={d.value} value={d.value}>
-                          {d.label}
+                      <option value="">{t("pickDeliverySlot")}</option>
+                      {setup.deliveryDays.weekly.map((slot) => (
+                        <option key={slot.date} value={slot.date}>
+                          {slot.weekLabel} — {slot.label}
                         </option>
                       ))}
                     </select>
                   ) : (
                     <>
                       <p className="admin-crud-form__hint">{setup.deliveryDays.monthly.hint}</p>
-                      <input
-                        className="admin-crud-form__input"
-                        type="number"
-                        min={1}
-                        max={28}
-                        value={dayMonth}
-                        onChange={(e) => setDayMonth(e.target.value)}
+                      <select
+                        className="admin-select"
+                        value={dayWeek}
+                        onChange={(e) => setDayWeek(e.target.value)}
                         required
-                      />
+                      >
+                        {setup.deliveryDays.monthly.recurring.map((d) => (
+                          <option key={d.value} value={d.value}>
+                            {d.label}
+                          </option>
+                        ))}
+                      </select>
                     </>
                   )}
                 </section>

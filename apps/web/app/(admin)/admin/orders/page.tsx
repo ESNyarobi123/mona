@@ -6,6 +6,7 @@ import { apiGet, apiPatch, normalizeApiList } from "../../../../lib/admin-api";
 import { formatMoney } from "../../../../lib/format";
 import { orderRef, userInitials } from "../../../../lib/admin-dashboard";
 import { orderStatusLabel } from "../../../../lib/customer-i18n";
+import type { AdminMessageKey } from "../../../../lib/admin-i18n";
 import { StatusBadge } from "../../../../components/admin/StatusBadge";
 import { AdminPageHeader } from "../../../../components/admin/AdminPageHeader";
 import { AdminPanel } from "../../../../components/admin/dashboard/AdminPanel";
@@ -68,12 +69,133 @@ function moduleIcon(module: string) {
   return module === "RESTAURANT" ? "🍽️" : "🛒";
 }
 
+type OrderGridProps = {
+  items: Order[];
+  busyId: string | null;
+  locale: "en" | "sw";
+  t: (key: AdminMessageKey) => string;
+  tf: (key: AdminMessageKey, vars: Record<string, string | number>) => string;
+  slotLabel: (slot: string) => string;
+  onSelect: (order: Order) => void;
+  onAdvance: (id: string, status: string) => void;
+  onCancel: (id: string) => void;
+};
+
+function OrderGrid({
+  items,
+  busyId,
+  locale,
+  t,
+  tf,
+  slotLabel,
+  onSelect,
+  onAdvance,
+  onCancel,
+}: OrderGridProps) {
+  return (
+    <ul className="admin-order-grid">
+      {items.map((o) => {
+        const next = NEXT_STATUS[o.status];
+        const busy = busyId === o.id;
+        const previewItems = o.items.slice(0, 3);
+        const extraCount = Math.max(0, o.items.length - previewItems.length);
+
+        return (
+          <li
+            key={o.id}
+            className={`admin-order-card admin-order-card--${o.module.toLowerCase()} admin-order-card--${o.status.toLowerCase()}`}
+          >
+            <div className="admin-order-card__accent" aria-hidden />
+
+            <header className="admin-order-card__head">
+              <div className="admin-order-card__ref">
+                <span className="admin-order-card__module-icon" aria-hidden>
+                  {moduleIcon(o.module)}
+                </span>
+                <div>
+                  <strong>{orderRef(o.id)}</strong>
+                  <span className="admin-order-date">{formatOrderDate(o.createdAt, locale)}</span>
+                </div>
+              </div>
+              <span className={`admin-order-status-pill admin-order-status-pill--${o.status.toLowerCase()}`}>
+                {orderStatusLabel(locale, o.status)}
+              </span>
+            </header>
+
+            <div className="admin-order-card__customer">
+              <span className="admin-order-card__avatar" aria-hidden>
+                {userInitials(o.user.name, o.user.phone)}
+              </span>
+              <div className="admin-order-card__customer-copy">
+                <strong>{o.user.name?.trim() || o.user.phone}</strong>
+                <small>{o.user.phone}</small>
+                {o.address ? <small className="admin-order-card__address">{o.address}</small> : null}
+              </div>
+            </div>
+
+            <div className="admin-order-card__meta">
+              <StatusBadge status={o.module} />
+              {o.mealSlot ? <span className="admin-kitchen-pill">{slotLabel(o.mealSlot)}</span> : null}
+              <span className="admin-kitchen-pill">{tf("orderItemCount", { n: o.items.length })}</span>
+            </div>
+
+            {previewItems.length > 0 ? (
+              <ul className="admin-order-card__items">
+                {previewItems.map((item, idx) => (
+                  <li key={`${item.name}-${idx}`}>
+                    <span>{item.name}</span>
+                    <small>× {item.quantity}</small>
+                  </li>
+                ))}
+                {extraCount > 0 ? <li className="admin-order-card__items-more">+{extraCount}</li> : null}
+              </ul>
+            ) : null}
+
+            <AdminOrderTimeline status={o.status} locale={locale} compact />
+
+            <footer className="admin-order-card__foot">
+              <div className="admin-order-card__total-wrap">
+                <span className="admin-order-card__total-label">{t("total")}</span>
+                <span className="admin-order-total">{formatMoney(o.total)}</span>
+              </div>
+              <div className="admin-order-card__actions">
+                <button type="button" className="admin-btn secondary sm" onClick={() => onSelect(o)}>
+                  {t("viewOrderDetails")}
+                </button>
+                {next ? (
+                  <button
+                    type="button"
+                    className="admin-btn sm"
+                    disabled={busy}
+                    onClick={() => onAdvance(o.id, o.status)}
+                  >
+                    {tf("advanceTo", { status: orderStatusLabel(locale, next) })}
+                  </button>
+                ) : null}
+                {o.status !== "CANCELLED" && o.status !== "DELIVERED" ? (
+                  <button
+                    type="button"
+                    className="admin-btn sm danger"
+                    disabled={busy}
+                    onClick={() => onCancel(o.id)}
+                  >
+                    {t("cancel")}
+                  </button>
+                ) : null}
+              </div>
+            </footer>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export default function AdminOrdersPage() {
   const { t, tf, locale, slotLabel } = useAdminLocale();
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("");
-  const [moduleFilter, setModuleFilter] = useState("");
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -83,15 +205,12 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     const q = searchParams.get("q");
     if (q) setSearch(q);
-    const module = searchParams.get("module");
-    if (module === "RESTAURANT" || module === "GROCERY") setModuleFilter(module);
   }, [searchParams]);
 
   function load() {
     setLoading(true);
     const q = new URLSearchParams({ limit: "100" });
     if (filter) q.set("status", filter);
-    if (moduleFilter) q.set("module", moduleFilter);
     if (search.trim()) q.set("q", search.trim());
     apiGet<OrdersResponse>(`/api/orders?${q}`)
       .then((data) => setOrders(normalizeApiList(data)))
@@ -101,7 +220,7 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     load();
-  }, [filter, moduleFilter, search]);
+  }, [filter, search]);
 
   const stats = useMemo(() => {
     const pending = orders.filter((o) => PENDING_STATUSES.has(o.status)).length;
@@ -111,6 +230,12 @@ export default function AdminOrdersPage() {
     const delivered = orders.filter((o) => o.status === "DELIVERED").length;
     return { pending, restaurant, grocery, value, delivered };
   }, [orders]);
+
+  const restaurantOrders = useMemo(
+    () => orders.filter((o) => o.module === "RESTAURANT"),
+    [orders]
+  );
+  const groceryOrders = useMemo(() => orders.filter((o) => o.module === "GROCERY"), [orders]);
 
   async function advance(id: string, status: string) {
     const next = NEXT_STATUS[status];
@@ -202,16 +327,6 @@ export default function AdminOrdersPage() {
                 aria-label={t("searchOrdersAria")}
               />
             </div>
-            <select
-              className="admin-select"
-              value={moduleFilter}
-              onChange={(e) => setModuleFilter(e.target.value)}
-              aria-label={t("module")}
-            >
-              <option value="">{t("allModules")}</option>
-              <option value="RESTAURANT">{t("navRestaurant")}</option>
-              <option value="GROCERY">{t("navGrocery")}</option>
-            </select>
           </div>
 
           <div className="admin-order-status-chips" role="group" aria-label={t("filterStatusAria")}>
@@ -231,122 +346,70 @@ export default function AdminOrdersPage() {
 
       {error && <p className="admin-error">{error}</p>}
 
-      <AdminPanel title={t("ordersList")} badge={tf("shownCount", { n: orders.length })}>
-        {loading ? (
+      {loading ? (
+        <AdminPanel title={t("ordersList")}>
           <AdminLoading label={t("loadingOrders")} />
-        ) : orders.length === 0 ? (
+        </AdminPanel>
+      ) : orders.length === 0 ? (
+        <AdminPanel title={t("ordersList")}>
           <div className="admin-order-empty">
             <span aria-hidden>📋</span>
             <p>{t("noOrdersMatch")}</p>
           </div>
-        ) : (
-          <ul className="admin-order-grid">
-            {orders.map((o) => {
-              const next = NEXT_STATUS[o.status];
-              const busy = busyId === o.id;
-              const previewItems = o.items.slice(0, 3);
-              const extraCount = Math.max(0, o.items.length - previewItems.length);
+        </AdminPanel>
+      ) : (
+        <div className="admin-orders-sections">
+          <AdminPanel
+            title={t("restaurantOrdersSection")}
+            badge={tf("shownCount", { n: restaurantOrders.length })}
+            className="admin-orders-section admin-orders-section--restaurant"
+          >
+            {restaurantOrders.length === 0 ? (
+              <div className="admin-order-empty admin-order-empty--section">
+                <span aria-hidden>🍽️</span>
+                <p>{t("noRestaurantOrders")}</p>
+              </div>
+            ) : (
+              <OrderGrid
+                items={restaurantOrders}
+                busyId={busyId}
+                locale={locale}
+                t={t}
+                tf={tf}
+                slotLabel={slotLabel}
+                onSelect={setSelected}
+                onAdvance={advance}
+                onCancel={cancel}
+              />
+            )}
+          </AdminPanel>
 
-              return (
-                <li
-                  key={o.id}
-                  className={`admin-order-card admin-order-card--${o.module.toLowerCase()} admin-order-card--${o.status.toLowerCase()}`}
-                >
-                  <div className="admin-order-card__accent" aria-hidden />
-
-                  <header className="admin-order-card__head">
-                    <div className="admin-order-card__ref">
-                      <span className="admin-order-card__module-icon" aria-hidden>
-                        {moduleIcon(o.module)}
-                      </span>
-                      <div>
-                        <strong>{orderRef(o.id)}</strong>
-                        <span className="admin-order-date">{formatOrderDate(o.createdAt, locale)}</span>
-                      </div>
-                    </div>
-                    <span className={`admin-order-status-pill admin-order-status-pill--${o.status.toLowerCase()}`}>
-                      {orderStatusLabel(locale, o.status)}
-                    </span>
-                  </header>
-
-                  <div className="admin-order-card__customer">
-                    <span className="admin-order-card__avatar" aria-hidden>
-                      {userInitials(o.user.name, o.user.phone)}
-                    </span>
-                    <div className="admin-order-card__customer-copy">
-                      <strong>{o.user.name?.trim() || o.user.phone}</strong>
-                      <small>{o.user.phone}</small>
-                      {o.address ? <small className="admin-order-card__address">{o.address}</small> : null}
-                    </div>
-                  </div>
-
-                  <div className="admin-order-card__meta">
-                    <StatusBadge status={o.module} />
-                    {o.mealSlot ? (
-                      <span className="admin-kitchen-pill">{slotLabel(o.mealSlot)}</span>
-                    ) : null}
-                    <span className="admin-kitchen-pill">
-                      {tf("orderItemCount", { n: o.items.length })}
-                    </span>
-                  </div>
-
-                  {previewItems.length > 0 ? (
-                    <ul className="admin-order-card__items">
-                      {previewItems.map((item, idx) => (
-                        <li key={`${item.name}-${idx}`}>
-                          <span>{item.name}</span>
-                          <small>× {item.quantity}</small>
-                        </li>
-                      ))}
-                      {extraCount > 0 ? (
-                        <li className="admin-order-card__items-more">+{extraCount}</li>
-                      ) : null}
-                    </ul>
-                  ) : null}
-
-                  <AdminOrderTimeline status={o.status} locale={locale} compact />
-
-                  <footer className="admin-order-card__foot">
-                    <div className="admin-order-card__total-wrap">
-                      <span className="admin-order-card__total-label">{t("total")}</span>
-                      <span className="admin-order-total">{formatMoney(o.total)}</span>
-                    </div>
-                    <div className="admin-order-card__actions">
-                      <button
-                        type="button"
-                        className="admin-btn secondary sm"
-                        onClick={() => setSelected(o)}
-                      >
-                        {t("viewOrderDetails")}
-                      </button>
-                      {next ? (
-                        <button
-                          type="button"
-                          className="admin-btn sm"
-                          disabled={busy}
-                          onClick={() => advance(o.id, o.status)}
-                        >
-                          {tf("advanceTo", { status: orderStatusLabel(locale, next) })}
-                        </button>
-                      ) : null}
-                      {o.status !== "CANCELLED" && o.status !== "DELIVERED" ? (
-                        <button
-                          type="button"
-                          className="admin-btn sm danger"
-                          disabled={busy}
-                          onClick={() => cancel(o.id)}
-                        >
-                          {t("cancel")}
-                        </button>
-                      ) : null}
-                    </div>
-                  </footer>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </AdminPanel>
+          <AdminPanel
+            title={t("groceryOrdersSection")}
+            badge={tf("shownCount", { n: groceryOrders.length })}
+            className="admin-orders-section admin-orders-section--grocery"
+          >
+            {groceryOrders.length === 0 ? (
+              <div className="admin-order-empty admin-order-empty--section">
+                <span aria-hidden>🛒</span>
+                <p>{t("noGroceryOrders")}</p>
+              </div>
+            ) : (
+              <OrderGrid
+                items={groceryOrders}
+                busyId={busyId}
+                locale={locale}
+                t={t}
+                tf={tf}
+                slotLabel={slotLabel}
+                onSelect={setSelected}
+                onAdvance={advance}
+                onCancel={cancel}
+              />
+            )}
+          </AdminPanel>
+        </div>
+      )}
 
       {selected ? (
         <div className="admin-modal-overlay admin-modal-overlay--spacious" onClick={() => setSelected(null)}>

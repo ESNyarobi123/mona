@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { apiGet, apiPatch, apiPost } from "../../../lib/admin-api";
 import { formatMoney } from "../../../lib/format";
-import { dayOfWeekLabel, frequencyLabel, packageKindLabel } from "@monana/utils";
+import { dayOfWeekLabel, frequencyLabel, packageKindLabel, groceryRecurringDeliveryDays } from "@monana/utils";
 import type { AppLocale } from "@monana/i18n";
 import { useAdminLocale } from "../AdminLocaleProvider";
 
@@ -52,7 +52,7 @@ type FullSub = {
   user: { name: string | null; phone: string };
 };
 
-const WEEKDAY_VALUES = [6, 5, 4, 3, 2, 1, 0] as const;
+const GROCERY_WEEKDAYS = groceryRecurringDeliveryDays("en").map((d) => d.value);
 
 function toDatetimeLocal(iso: string | null) {
   if (!iso) return "";
@@ -453,15 +453,17 @@ export function GrocerySubscriptionManageModal({
                 </select>
               </label>
 
-              {isWeekly ? (
+              {(isWeekly || isMonthly) ? (
                 <label className="admin-crud-form__field admin-crud-form__field--full">
-                  <span className="admin-crud-form__label">{t("deliveryDayWeekly")}</span>
+                  <span className="admin-crud-form__label">
+                    {isWeekly ? t("deliveryDayWeekly") : t("deliveryDayRecurringWeekly")}
+                  </span>
                   <select
                     className="admin-select"
                     value={form.preferredDayOfWeek}
                     onChange={(e) => setForm({ ...form, preferredDayOfWeek: e.target.value })}
                   >
-                    {WEEKDAY_VALUES.map((v) => (
+                    {GROCERY_WEEKDAYS.map((v) => (
                       <option key={v} value={v}>
                         {dayOfWeekLabel(v, locale)}
                       </option>
@@ -470,7 +472,7 @@ export function GrocerySubscriptionManageModal({
                 </label>
               ) : null}
 
-              {isMonthly ? (
+              {isMonthly && sub.preferredDayOfMonth != null && sub.preferredDayOfWeek == null ? (
                 <>
                   <label className="admin-crud-form__field">
                     <span className="admin-crud-form__label">{t("firstDayOfMonth")}</span>

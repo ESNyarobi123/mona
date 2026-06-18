@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiPost, getStoredUser } from "../../lib/admin-api";
+import { apiGet, apiPost, getStoredUser } from "../../lib/admin-api";
 import { clearCart, getCart, type CartState } from "../../lib/cart";
 import { formatMoney, UNIT_LABELS } from "../../lib/format";
 import { slotLabel, tr } from "../../lib/customer-i18n";
@@ -48,13 +48,26 @@ export function OrderCheckoutForm({ module, title }: Props) {
   const [cart, setCart] = useState<CartState>({ lines: [] });
   const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
+  const [paymentTiming, setPaymentTiming] = useState<"PAY_NOW" | "PAY_ON_DELIVERY">("PAY_NOW");
+  const [deliverySlots, setDeliverySlots] = useState<
+    { date: string; label: string; deliveryAt: string; weekLabel: string }[]
+  >([]);
+  const [selectedSlot, setSelectedSlot] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [quote, setQuote] = useState<{
+    subtotal: number;
+    deliveryFee: number;
+    total: number;
+    freeDelivery: boolean;
+    amountToFreeDelivery: number | null;
+  } | null>(null);
 
   const lines = cart.lines.filter((l) => l.module === module);
   const itemCount = lines.reduce((n, l) => n + l.quantity, 0);
-  const total = lines.reduce((s, l) => s + l.price * l.quantity, 0);
+  const subtotal = lines.reduce((s, l) => s + l.price * l.quantity, 0);
+  const grandTotal = quote?.total ?? subtotal;
 
   useEffect(() => {
     setCart(getCart());
@@ -62,6 +75,54 @@ export function OrderCheckoutForm({ module, title }: Props) {
     window.addEventListener("monana-cart", onCart);
     return () => window.removeEventListener("monana-cart", onCart);
   }, []);
+
+  useEffect(() => {
+    if (module !== "GROCERY") return;
+    apiGet<{ deliverySlots: { date: string; label: string; deliveryAt: string; weekLabel: string }[] }>(
+      "/api/grocery/store/on-demand"
+    )
+      .then((catalog) => {
+        setDeliverySlots(catalog.deliverySlots ?? []);
+        if (catalog.deliverySlots?.[0]) {
+          setSelectedSlot(catalog.deliverySlots[0].deliveryAt);
+        }
+      })
+      .catch(() => setDeliverySlots([]));
+  }, [module]);
+
+  useEffect(() => {
+    if (!lines.length) {
+      setQuote(null);
+      return;
+    }
+    const trimmed = address.trim();
+    if (trimmed.length < 3) {
+      setQuote(null);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      apiPost<{
+        subtotal: number;
+        deliveryFee: number;
+        total: number;
+        freeDelivery: boolean;
+        amountToFreeDelivery: number | null;
+      }>("/api/delivery/quote", {
+        module,
+        address: trimmed,
+        items: lines.map((l) => ({
+          productId: l.productId,
+          menuItemId: l.menuItemId,
+          quantity: l.quantity,
+        })),
+      })
+        .then(setQuote)
+        .catch(() => setQuote(null));
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [module, address, lines.map((l) => `${l.key}:${l.quantity}`).join("|")]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -76,6 +137,10 @@ export function OrderCheckoutForm({ module, title }: Props) {
     }
     if (!address.trim()) {
       setError(t("addressRequired"));
+      return;
+    }
+    if (module === "GROCERY" && !selectedSlot) {
+      setError(t("pickDeliverySlot"));
       return;
     }
 
@@ -100,7 +165,16 @@ export function OrderCheckoutForm({ module, title }: Props) {
         body.mealSlot = cart.restaurantSlot;
       }
 
-      const order = await apiPost<{ id: string }>("/api/orders", body);
+      if (module === "GROCERY") {
+        body.scheduledFor = selectedSlot;
+      }
+
+      body.paymentTiming = paymentTiming;
+
+      const order = await apiPost<{
+        id: string;
+        kind?: string;
+      }>("/api/orders", body);
 
       const remaining = cart.lines.filter((l) => l.module !== module);
       if (remaining.length === 0) {
@@ -111,10 +185,17 @@ export function OrderCheckoutForm({ module, title }: Props) {
         window.dispatchEvent(new Event("monana-cart"));
       }
 
-      setSuccess(`${t("orderCreated").replace("!", "")} #${order.id.slice(-6).toUpperCase()}!`);
-      setTimeout(() => {
-        router.push(`/pay/${order.id}`);
-      }, 800);
+      if (order.kind === "ORDER") {
+        setSuccess(t("checkoutPayLaterCreated"));
+        setTimeout(() => {
+          router.push(cfg.ordersHref);
+        }, 800);
+      } else {
+        setSuccess(t("checkoutCreated"));
+        setTimeout(() => {
+          router.push(`/pay/${order.id}`);
+        }, 800);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : t("orderFailed"));
     } finally {
@@ -133,7 +214,7 @@ export function OrderCheckoutForm({ module, title }: Props) {
           <h1 className="checkout-page__title">{title}</h1>
           <p className="checkout-page__sub">
             {lines.length > 0
-              ? `${itemCount} ${t("items")} · ${formatMoney(total)}`
+              ? `${itemCount} ${t("items")} · ${formatMoney(grandTotal)}`
               : t(cfg.subtitleKey)}
           </p>
         </div>
@@ -211,18 +292,51 @@ export function OrderCheckoutForm({ module, title }: Props) {
             </ul>
             <div className="checkout-card__subtotal">
               <span>{t("subtotal")}</span>
-              <strong>{formatMoney(total)}</strong>
+              <strong>{formatMoney(quote?.subtotal ?? subtotal)}</strong>
+            </div>
+            {quote ? (
+              <div className="checkout-card__subtotal checkout-card__delivery">
+                <span>{t("deliveryFee")}</span>
+                <strong>{quote.freeDelivery ? t("deliveryFree") : formatMoney(quote.deliveryFee)}</strong>
+              </div>
+            ) : address.trim().length >= 3 ? (
+              <p className="checkout-card__quote-hint">{t("checkoutAddressHint")}</p>
+            ) : null}
+            {quote?.amountToFreeDelivery ? (
+              <p className="checkout-card__free-hint">
+                {t("deliveryFreeHint").replace("{amount}", formatMoney(quote.amountToFreeDelivery))}
+              </p>
+            ) : null}
+            <div className="checkout-card__total">
+              <span>{t("orderTotal")}</span>
+              <strong>{formatMoney(grandTotal)}</strong>
             </div>
           </section>
 
           <section className="checkout-card">
             <header className="checkout-card__head">
-              <span className="checkout-card__step">2</span>
+              <span className="checkout-card__step">{module === "GROCERY" ? 2 : 2}</span>
               <div>
-                <h2>{t("deliveryAddress")}</h2>
-                <p>{t("checkoutAddressHint")}</p>
+                <h2>{module === "GROCERY" ? t("checkoutDeliveryDay") : t("deliveryAddress")}</h2>
+                <p>{module === "GROCERY" ? t("checkoutDeliveryHint") : t("checkoutAddressHint")}</p>
               </div>
             </header>
+
+            {module === "GROCERY" ? (
+              <div className="enroll-day-grid checkout-delivery-grid">
+                {deliverySlots.map((slot) => (
+                  <button
+                    key={slot.date}
+                    type="button"
+                    className={`enroll-day-btn ${selectedSlot === slot.deliveryAt ? "enroll-day-btn--active" : ""}`}
+                    onClick={() => setSelectedSlot(slot.deliveryAt)}
+                  >
+                    <span>{slot.label}</span>
+                    <small>{slot.weekLabel}</small>
+                  </button>
+                ))}
+              </div>
+            ) : null}
 
             <div className="checkout-fields">
               <label className="checkout-field">
@@ -263,6 +377,40 @@ export function OrderCheckoutForm({ module, title }: Props) {
             </div>
           </section>
 
+          <section className="checkout-card">
+            <header className="checkout-card__head">
+              <span className="checkout-card__step">3</span>
+              <div>
+                <h2>{t("paymentTimingTitle")}</h2>
+              </div>
+            </header>
+            <div className="checkout-payment-timing">
+              <label className={`checkout-payment-timing__option ${paymentTiming === "PAY_NOW" ? "checkout-payment-timing__option--active" : ""}`}>
+                <input
+                  type="radio"
+                  name="paymentTiming"
+                  value="PAY_NOW"
+                  checked={paymentTiming === "PAY_NOW"}
+                  onChange={() => setPaymentTiming("PAY_NOW")}
+                />
+                <span>{t("paymentTimingNow")}</span>
+              </label>
+              <label className={`checkout-payment-timing__option ${paymentTiming === "PAY_ON_DELIVERY" ? "checkout-payment-timing__option--active" : ""}`}>
+                <input
+                  type="radio"
+                  name="paymentTiming"
+                  value="PAY_ON_DELIVERY"
+                  checked={paymentTiming === "PAY_ON_DELIVERY"}
+                  onChange={() => setPaymentTiming("PAY_ON_DELIVERY")}
+                />
+                <span>{t("paymentTimingLater")}</span>
+              </label>
+            </div>
+            {paymentTiming === "PAY_ON_DELIVERY" ? (
+              <p className="checkout-page__footer-hint">{t("payOnDeliveryNote")}</p>
+            ) : null}
+          </section>
+
           <section className="checkout-trust">
             <span aria-hidden>🔒</span>
             <p>{t("checkoutTrust")}</p>
@@ -274,9 +422,11 @@ export function OrderCheckoutForm({ module, title }: Props) {
           <footer className="checkout-page__footer">
             <div className="checkout-page__footer-row">
               <span>{t("youPay")}</span>
-              <strong>{formatMoney(total)}</strong>
+              <strong>{formatMoney(grandTotal)}</strong>
             </div>
-            <p className="checkout-page__footer-hint">{t("paymentAfterConfirm")}</p>
+            <p className="checkout-page__footer-hint">
+              {paymentTiming === "PAY_ON_DELIVERY" ? t("payOnDeliveryNote") : t("paymentAfterConfirm")}
+            </p>
             <button
               type="submit"
               className={`landing-btn checkout-page__submit landing-btn--${cfg.theme === "green" ? "orange" : "navy"}`}

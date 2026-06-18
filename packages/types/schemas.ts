@@ -98,34 +98,80 @@ export const cartItemSchema = z.object({
   quantity: z.coerce.number().positive().default(1),
 });
 
-export const createOrderSchema = z.object({
-  userId: z.string().min(1),
-  module: businessModuleSchema,
-  channel: channelSchema.default("WEB"),
-  items: z.array(cartItemSchema).min(1, "Oda lazima iwe na bidhaa angalau moja"),
-  address: z.string().optional(),
-  note: z.string().optional(),
-  mealSlot: mealSlotSchema.optional(),
-  subscriptionId: z.string().optional(),
-  scheduledFor: z.string().datetime().optional(),
-});
+export const paymentTimingSchema = z.enum(["PAY_NOW", "PAY_ON_DELIVERY"]);
+
+export const createOrderSchema = z
+  .object({
+    userId: z.string().min(1),
+    module: businessModuleSchema,
+    channel: channelSchema.default("WEB"),
+    items: z.array(cartItemSchema).min(1, "Oda lazima iwe na bidhaa angalau moja"),
+    address: z.string().optional(),
+    note: z.string().optional(),
+    mealSlot: mealSlotSchema.optional(),
+    subscriptionId: z.string().optional(),
+    scheduledFor: z.string().datetime().optional(),
+    paymentTiming: paymentTimingSchema.default("PAY_NOW"),
+  })
+  .superRefine((data, ctx) => {
+    if (data.module === "GROCERY" && !data.subscriptionId && !data.scheduledFor) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Chagua siku ya kupokea mzigo (Jumatano au Jumamosi)",
+        path: ["scheduledFor"],
+      });
+    }
+  });
 
 export const updateOrderStatusSchema = z.object({
   orderId: z.string().min(1),
   status: orderStatusSchema,
 });
 
-export const createPaymentSchema = z.object({
-  orderId: z.string().min(1),
-});
+export const createPaymentSchema = z
+  .object({
+    orderId: z.string().min(1).optional(),
+    intentId: z.string().min(1).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.orderId && !data.intentId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "orderId au intentId inahitajika",
+        path: ["intentId"],
+      });
+    }
+  });
 
-export const submitPaymentSchema = z.object({
-  paymentId: z.string().min(1),
-  reference: z.string().min(1, "Reference ya malipo ni lazima"),
-});
+export const submitPaymentSchema = z
+  .object({
+    paymentId: z.string().min(1).optional(),
+    intentId: z.string().min(1).optional(),
+    reference: z.string().min(1, "Reference ya malipo ni lazima"),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.paymentId && !data.intentId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "paymentId au intentId inahitajika",
+        path: ["intentId"],
+      });
+    }
+    if (data.paymentId && data.intentId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Tuma paymentId au intentId, si zote mbili",
+        path: ["intentId"],
+      });
+    }
+  });
 
 export const confirmPaymentSchema = z.object({
   paymentId: z.string().min(1),
+});
+
+export const requestOrderPaymentSchema = z.object({
+  reference: z.string().min(1, "Reference ya malipo ni lazima"),
 });
 
 export const platformSettingsSchema = z.object({
@@ -258,9 +304,17 @@ export const createSubscriptionSchema = z.object({
   frequency: z.enum(["WEEKLY", "MONTHLY"]).optional(),
   address: z.string().min(3, "Anwani ya kufikishia ni lazima"),
   channel: channelSchema.default("WEB"),
-  preferredDayOfWeek: z.coerce.number().int().min(0).max(6).optional(),
+  preferredDayOfWeek: z.coerce
+    .number()
+    .int()
+    .refine((d) => d === 3 || d === 6, { message: "Chagua Jumatano au Jumamosi pekee" })
+    .optional(),
   preferredDayOfMonth: z.coerce.number().int().min(1).max(28).optional(),
   secondaryDayOfMonth: z.coerce.number().int().min(1).max(28).optional(),
+  scheduledDeliveryDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Tarehe ya utoaji si sahihi")
+    .optional(),
   note: z.string().optional(),
   startNow: z.boolean().default(false),
 });
@@ -269,6 +323,10 @@ const defaultBasketSchema = z
   .array(z.object({ productId: z.string(), quantity: z.number().positive() }))
   .min(1, "Chagua angalau bidhaa moja kwenye kikapu chako cha msingi");
 
+const groceryDayOfWeekSchema = z.coerce.number().int().refine((d) => d === 3 || d === 6, {
+  message: "Chagua Jumatano au Jumamosi pekee",
+});
+
 /** Mteja: jiunge na uanachama + kikapu cha msingi */
 export const enrollMembershipSchema = z
   .object({
@@ -276,9 +334,14 @@ export const enrollMembershipSchema = z
     plan: z.enum(["WEEKLY", "MONTHLY"]),
     address: z.string().min(3, "Anwani ya kufikishia ni lazima"),
     channel: channelSchema.default("WEB"),
-    /** Lazima kwa WEEKLY — siku ya kupokea mzigo (0–6) */
-    preferredDayOfWeek: z.coerce.number().int().min(0).max(6).optional(),
-    /** Lazima kwa MONTHLY — siku ya mwezi (1–28) */
+    /** Wiki: siku ya kurudia (3=Jumatano, 6=Jumamosi) */
+    preferredDayOfWeek: groceryDayOfWeekSchema.optional(),
+    /** Wiki: tarehe halisi ya utoaji wa kwanza (YYYY-MM-DD) */
+    scheduledDeliveryDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Tarehe ya utoaji si sahihi")
+      .optional(),
+    /** @deprecated mwezi sasa unatumia preferredDayOfWeek */
     preferredDayOfMonth: z.coerce.number().int().min(1).max(28).optional(),
     defaultBasket: defaultBasketSchema,
     packageId: z.string().min(1).optional(),
@@ -286,18 +349,20 @@ export const enrollMembershipSchema = z
     startNow: z.boolean().default(false),
   })
   .superRefine((data, ctx) => {
-    if (data.plan === "WEEKLY" && data.preferredDayOfWeek == null) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "Chagua siku ya kupokea mzigo (mf. Jumamosi)",
-        path: ["preferredDayOfWeek"],
-      });
+    if (data.plan === "WEEKLY") {
+      if (data.scheduledDeliveryDate == null && data.preferredDayOfWeek == null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Chagua siku ya kupokea mzigo wiki hii (Jumatano au Jumamosi)",
+          path: ["scheduledDeliveryDate"],
+        });
+      }
     }
-    if (data.plan === "MONTHLY" && data.preferredDayOfMonth == null) {
+    if (data.plan === "MONTHLY" && data.preferredDayOfWeek == null) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Chagua siku ya mwezi ya kupokea mzigo (1–28)",
-        path: ["preferredDayOfMonth"],
+        message: "Chagua siku ya utoaji kila wiki (Jumatano au Jumamosi)",
+        path: ["preferredDayOfWeek"],
       });
     }
   });
@@ -306,6 +371,21 @@ export const membershipPreviewSchema = z.object({
   plan: z.enum(["WEEKLY", "MONTHLY"]),
   defaultBasket: defaultBasketSchema,
   packageId: z.string().min(1).optional(),
+});
+
+export const enrollRestaurantMembershipSchema = z.object({
+  userId: z.string().min(1),
+  mealSlots: z
+    .array(mealSlotSchema)
+    .min(1, "Chagua angalau muda mmoja (asubuhi, mchana, au usiku)")
+    .max(3)
+    .refine((slots) => new Set(slots).size === slots.length, "Usirudie muda uleule"),
+  address: z.string().min(3).optional(),
+  channel: channelSchema.default("WEB"),
+});
+
+export const pauseRestaurantMembershipSchema = z.object({
+  weeks: z.coerce.number().int().min(1).max(8).default(1),
 });
 
 export const menuItemSchema = z.object({
@@ -433,8 +513,27 @@ export const deliveryZoneSchema = z.object({
   name: z.string().min(2),
   nameSw: z.string().min(2).optional(),
   keywords: z.array(z.string().min(2)).min(1),
+  deliveryFee: z.coerce.number().min(0).optional(),
   sortOrder: z.coerce.number().int().min(0).optional(),
   active: z.boolean().optional(),
+});
+
+export const deliveryPricingModeSchema = z.enum(["FLAT_RATE", "MIN_ORDER_FREE", "ZONE"]);
+
+export const deliveryPricingConfigSchema = z.object({
+  mode: deliveryPricingModeSchema,
+  flatRateFee: z.coerce.number().min(0),
+  minOrderForFreeDelivery: z.coerce.number().min(0),
+  unmatchedZoneFee: z.coerce.number().min(0),
+});
+
+export const updateDeliveryPricingConfigSchema = deliveryPricingConfigSchema.partial();
+
+export const deliveryQuoteSchema = z.object({
+  module: businessModuleSchema,
+  address: z.string().optional(),
+  items: z.array(cartItemSchema).min(1),
+  forceFreeDelivery: z.boolean().optional(),
 });
 
 export const updateDeliveryZoneSchema = deliveryZoneSchema.partial();
