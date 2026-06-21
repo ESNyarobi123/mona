@@ -27,6 +27,7 @@ type UserDetail = {
     status: string;
     total: string | number;
     address: string | null;
+    note: string | null;
     orderType: string | null;
     channel: string;
     createdAt: string;
@@ -400,6 +401,7 @@ export function AdminUserDetailModal({ userId, onClose, onUpdated, onDeleted }: 
                       {o.channel ? <span className="admin-kitchen-pill">{o.channel}</span> : null}
                     </div>
                     {o.address ? <p className="admin-user-activity-card__sub">{o.address}</p> : null}
+                    {o.note ? <p className="admin-user-activity-card__sub">{o.note}</p> : null}
                     <footer className="admin-user-activity-card__foot">
                       <strong className="admin-user-activity-card__amount">{formatMoney(o.total)}</strong>
                       {o.payment ? <StatusBadge status={o.payment.status} /> : null}

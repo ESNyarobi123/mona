@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { matchesAdminSearch } from "../../../../../lib/admin-search";
-import { apiGet, apiPatch, apiPost } from "../../../../../lib/admin-api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../../../../../lib/admin-api";
 import { AdminPageHeader } from "../../../../../components/admin/AdminPageHeader";
 import { AdminKpiCard } from "../../../../../components/admin/dashboard/AdminKpiCard";
 import { AdminPanel } from "../../../../../components/admin/dashboard/AdminPanel";
@@ -139,10 +139,29 @@ export default function RestaurantMenusPage() {
   }
 
   async function deactivate(menu: MenuRow) {
-    if (!window.confirm(tf("deleteMenuBoardConfirm", { name: menu.name }))) return;
+    if (!window.confirm(tf("hideMenuBoardConfirm", { name: menu.name }))) return;
     setSaving(true);
     try {
       await apiPatch(`/api/restaurant/menu/${menu.id}`, { active: false });
+      if (editingId === menu.id) closeModal();
+      load();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : t("error"));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function removeMenu(menu: MenuRow) {
+    const itemCount = menu.items.length;
+    const message =
+      itemCount > 0
+        ? tf("deleteMenuBoardWithItemsConfirm", { name: menu.name, n: itemCount })
+        : tf("deleteMenuBoardConfirm", { name: menu.name });
+    if (!window.confirm(message)) return;
+    setSaving(true);
+    try {
+      await apiDelete(`/api/restaurant/menu/${menu.id}`);
       if (editingId === menu.id) closeModal();
       load();
     } catch (err) {
@@ -256,7 +275,7 @@ export default function RestaurantMenusPage() {
                     {menu.active ? (
                       <button
                         type="button"
-                        className="admin-btn danger sm"
+                        className="admin-btn secondary sm"
                         onClick={() => deactivate(menu)}
                         disabled={busy}
                       >
@@ -280,6 +299,14 @@ export default function RestaurantMenusPage() {
                         {t("available")}
                       </button>
                     )}
+                    <button
+                      type="button"
+                      className="admin-btn danger sm"
+                      onClick={() => removeMenu(menu)}
+                      disabled={busy}
+                    >
+                      {t("delete")}
+                    </button>
                   </div>
                   {itemCount > 0 ? (
                     <Link
@@ -370,6 +397,16 @@ export default function RestaurantMenusPage() {
                 <button type="button" className="admin-btn secondary" onClick={closeModal}>
                   {t("cancel")}
                 </button>
+                {modalMode === "edit" && editingMenu ? (
+                  <button
+                    type="button"
+                    className="admin-btn danger admin-crud-form__actions-delete"
+                    onClick={() => removeMenu(editingMenu)}
+                    disabled={saving}
+                  >
+                    {t("delete")}
+                  </button>
+                ) : null}
               </div>
             </form>
           </div>

@@ -1,7 +1,7 @@
 import { prisma, type BusinessModule, type OrderStatus, type MealSlot, type GroceryOrderType } from "@monana/db";
 import { createOrderSchema } from "@monana/types";
 import { computeDeliveryQuote } from "@monana/settings";
-import { paginatedResult, type PaginationParams, validateGroceryScheduledFor } from "@monana/utils";
+import { paginatedResult, type PaginationParams, validateGroceryScheduledFor, orderFulfillmentBlockedReason } from "@monana/utils";
 import { assertMealSlotOpen } from "../restaurant/meal-slots";
 import { enqueueKitchen } from "../restaurant/kitchen-queue";
 import type { CreateOrderArgs } from "./checkout-intent";
@@ -47,6 +47,7 @@ async function resolveLineItem(it: { productId?: string; menuItemId?: string; qu
   if (it.productId) {
     const p = await prisma.product.findUnique({ where: { id: it.productId } });
     if (!p || !p.available) throw new Error(`Bidhaa haipatikani: ${it.productId}`);
+    if (!p.inStock) throw new Error(`"${p.name}" imeisha stoo — haiwezi kuongezwa kwenye oda.`);
     return {
       productId: p.id,
       menuItemId: null as string | null,
@@ -120,16 +121,78 @@ export async function createOrder(args: CreateOrderArgs) {
     include: { items: true, user: { select: { id: true, name: true, phone: true } } },
   });
 
-  if (input.module === "RESTAURANT" && input.mealSlot) {
+  if (
+    input.module === "RESTAURANT" &&
+    input.mealSlot &&
+    input.paymentTiming !== "PAY_ON_DELIVERY"
+  ) {
     await enqueueKitchen(order.id, input.mealSlot);
   }
 
   return order;
 }
 
-export async function updateOrderStatus(orderId: string, status: OrderStatus) {
+async function assertPayOnDeliveryPending(orderId: string) {
   const order = await prisma.order.findUnique({ where: { id: orderId } });
   if (!order) throw new Error("Oda haipatikani");
+  if (order.paymentTiming !== "PAY_ON_DELIVERY") {
+    throw new Error("Oda hii si ya kulipia ukifika");
+  }
+  if (order.submittedAt) throw new Error("Ombi hili tayari limeidhinishwa");
+  if (order.status === "CANCELLED") throw new Error("Ombi hili limekataliwa");
+  return order;
+}
+
+/** Admin approves pay-on-delivery request — order enters the normal flow. */
+export async function approvePayOnDeliveryRequest(orderId: string) {
+  const order = await assertPayOnDeliveryPending(orderId);
+  const updated = await prisma.order.update({
+    where: { id: orderId },
+    data: { submittedAt: new Date(), status: "CONFIRMED" },
+    include: {
+      items: true,
+      user: { select: { id: true, name: true, phone: true } },
+    },
+  });
+
+  if (updated.module === "RESTAURANT" && updated.mealSlot) {
+    const queued = await prisma.kitchenQueue.findUnique({ where: { orderId } });
+    if (!queued) {
+      await enqueueKitchen(orderId, updated.mealSlot);
+    }
+  }
+
+  return updated;
+}
+
+/** Admin rejects pay-on-delivery request before the order is submitted. */
+export async function rejectPayOnDeliveryRequest(orderId: string) {
+  await assertPayOnDeliveryPending(orderId);
+  return prisma.order.update({
+    where: { id: orderId },
+    data: { status: "CANCELLED" },
+  });
+}
+
+export async function updateOrderStatus(orderId: string, status: OrderStatus) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { payment: { select: { status: true } } },
+  });
+  if (!order) throw new Error("Oda haipatikani");
+
+  if (status !== "CANCELLED") {
+    const blocked = orderFulfillmentBlockedReason(
+      {
+        status: order.status,
+        paymentTiming: order.paymentTiming,
+        submittedAt: order.submittedAt,
+        payment: order.payment,
+      },
+      "sw"
+    );
+    if (blocked) throw new Error(blocked);
+  }
 
   const flow = statusFlow(order.module);
   const allowed = flow[order.status];

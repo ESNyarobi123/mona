@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatMoney, UNIT_LABELS } from "../../lib/format";
+import { useAppLocale } from "../providers/AppLocaleProvider";
 
 export type HotRailItem = {
   id: string;
@@ -12,6 +13,7 @@ export type HotRailItem = {
   imageUrl?: string | null;
   menuItemId?: string;
   productId?: string;
+  inStock?: boolean;
 };
 
 type Props = {
@@ -33,6 +35,7 @@ export function HotProductsRail({
   addedId = null,
   onAdd,
 }: Props) {
+  const { t } = useAppLocale();
   const btnClass =
     accent === "green"
       ? "landing-btn landing-btn--navy hot-rail-card__btn"
@@ -104,12 +107,14 @@ export function HotProductsRail({
           <div className="hot-rail-track__inner">
             {items.map((h, i) => {
               const addId = h.productId ?? h.menuItemId ?? h.id;
+              const outOfStock = h.inStock === false;
               return (
                 <article
                   key={h.id}
-                  className="hot-rail-card"
+                  className={`hot-rail-card${outOfStock ? " hot-rail-card--oos" : ""}`}
                   style={{ "--hot-i": i } as React.CSSProperties}
                 >
+                  {outOfStock ? <span className="hot-rail-card__oos">{t("outOfStock")}</span> : null}
                   {h.badge ? <span className="hot-rail-card__badge">{h.badge}</span> : null}
                   {h.imageUrl ? (
                     <div className="hot-rail-card__media">
@@ -127,8 +132,14 @@ export function HotProductsRail({
                     <small> / {UNIT_LABELS[h.unit] ?? h.unit}</small>
                   </p>
                   {canAdd && onAdd ? (
-                    <button type="button" className={btnClass} onClick={() => onAdd(addId)}>
-                      {addedId === addId ? "✓ Imeongezwa" : "Ongeza cart"}
+                    <button
+                      type="button"
+                      className={btnClass}
+                      onClick={() => onAdd(addId)}
+                      disabled={outOfStock}
+                      aria-disabled={outOfStock}
+                    >
+                      {outOfStock ? t("outOfStock") : addedId === addId ? t("addedToCart") : t("addToCart")}
                     </button>
                   ) : null}
                 </article>

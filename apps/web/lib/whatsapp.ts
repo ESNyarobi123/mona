@@ -8,6 +8,8 @@ export {
   notifyAdminPaymentConfirmed,
   notifyAdminPayOnDeliveryOrder,
   notifyAdminPayOnDeliveryPaymentRequest,
+  notifyCustomerPayOnDeliveryApproved,
+  notifyCustomerPayOnDeliveryRejected,
   notifyCustomerOrderReceived,
   notifyCustomerPaymentConfirmed,
   notifyCustomerPaymentRejected,

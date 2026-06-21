@@ -73,11 +73,18 @@ export const unitCodeSchema = z
 /** @deprecated use unitCodeSchema — kept for backwards-compatible imports */
 export const saleUnitSchema = unitCodeSchema;
 
+function sanitizeUnitCodeInput(val: unknown): string | undefined {
+  if (typeof val !== "string" || val.trim() === "") return undefined;
+  const trimmed = val.trim().toUpperCase().replace(/[^A-Z0-9_]/g, "");
+  if (!trimmed || !/^[A-Z][A-Z0-9_]*$/.test(trimmed)) return undefined;
+  return trimmed;
+}
+
 export const createUnitSchema = z.object({
-  code: unitCodeSchema.optional(),
-  labelEn: z.string().min(1).max(64),
-  labelSw: z.string().min(1).max(64),
-  priceSuffix: z.string().min(1).max(24),
+  code: z.preprocess(sanitizeUnitCodeInput, unitCodeSchema.optional()),
+  labelEn: z.string().trim().min(1, "Jina la Kiingereza linahitajika").max(64),
+  labelSw: z.string().trim().min(1, "Jina la Kiswahili linahitajika").max(64),
+  priceSuffix: z.string().trim().min(1, "Kiambishi cha bei kinahitajika").max(24),
   quantitySuffixEn: z.string().max(24).optional(),
   quantitySuffixSw: z.string().max(24).optional(),
   icon: z.string().max(8).optional(),
@@ -120,6 +127,24 @@ export const createOrderSchema = z
         message: "Chagua siku ya kupokea mzigo (Jumatano au Jumamosi)",
         path: ["scheduledFor"],
       });
+    }
+    if (!data.subscriptionId) {
+      const address = data.address?.trim() ?? "";
+      if (address.length < 3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Andika anwani kamili ya kufikishia",
+          path: ["address"],
+        });
+      }
+      const note = data.note?.trim() ?? "";
+      if (note.length < 3) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Andika maelezo ya ziada (mlango, rangi ya nyumba, jina la mlango…)",
+          path: ["note"],
+        });
+      }
     }
   });
 
@@ -281,6 +306,7 @@ export const groceryProductSchema = z.object({
   imageUrl: catalogImageUrlSchema.optional().or(z.literal("")),
   categoryId: z.string().optional(),
   available: z.boolean().default(true),
+  inStock: z.boolean().default(true),
 });
 
 export const packageKindSchema = z.enum(["WEEKLY_BASKET", "MONTHLY_PANTRY"]);

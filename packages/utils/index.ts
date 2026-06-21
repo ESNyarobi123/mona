@@ -5,6 +5,7 @@ export * from "./serialize";
 export * from "./pagination";
 export * from "./subscription";
 export * from "./grocery-delivery";
+export * from "./order-payment";
 
 /** Format a number as Tanzanian Shillings, e.g. 1500 -> "TZS 1,500". */
 export function formatTZS(amount: number): string {
@@ -60,7 +61,7 @@ export function genOrderRef(): string {
 export function normalizePaymentProofReference(reference: string): string {
   const trimmed = reference.trim();
   if (!trimmed) return "";
-  if (/^manual$/i.test(trimmed)) return "MANUAL";
+  if (/^manual$/i.test(trimmed)) return "";
   return trimmed.replace(/\s+/g, "").toUpperCase();
 }
 

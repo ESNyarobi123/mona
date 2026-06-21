@@ -33,6 +33,20 @@ export function clearSession() {
 
 type ApiResult<T> = { success: true; data: T } | { success: false; error: string };
 
+export class ApiClientError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiClientError";
+    this.status = status;
+  }
+}
+
+export function isApiNotFoundError(err: unknown): boolean {
+  return err instanceof ApiClientError && err.status === 404;
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const res = await fetch(path, {
@@ -45,7 +59,8 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
   });
   const json = (await res.json()) as ApiResult<T>;
   if (!json.success) {
-    throw new Error("error" in json ? json.error : "Hitilafu ya API");
+    const message = "error" in json ? json.error : "Hitilafu ya API";
+    throw new ApiClientError(message, res.status);
   }
   return json.data;
 }

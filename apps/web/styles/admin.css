@@ -3111,6 +3111,21 @@ a.admin-insight-chip:hover {
   background: var(--admin-bg);
 }
 
+.admin-menu-card--oos {
+  border-color: rgba(180, 83, 9, 0.28);
+}
+
+.admin-menu-card__status--oos {
+  color: #b45309;
+  background: rgba(180, 83, 9, 0.12);
+}
+
+.admin-kitchen-pill--warning {
+  color: #b45309;
+  background: rgba(180, 83, 9, 0.12);
+  border-color: rgba(180, 83, 9, 0.22);
+}
+
 .admin-menu-card--grocery:hover {
   border-color: rgba(42, 63, 102, 0.28);
 }
@@ -3303,6 +3318,10 @@ a.admin-insight-chip:hover {
   flex-wrap: wrap;
   gap: 0.5rem;
   padding-top: 0.25rem;
+}
+
+.admin-crud-form__actions-delete {
+  margin-left: auto;
 }
 
 .admin-modal h2 {
@@ -3780,6 +3799,22 @@ a.admin-insight-chip:hover {
   -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
+}
+
+.admin-order-card__note {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--admin-muted);
+  font-style: italic;
+}
+
+.admin-order-detail__text {
+  margin: 0 0 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .admin-order-card__meta {
@@ -8823,6 +8858,10 @@ a.admin-order-id:hover {
 
 .admin-delivery-pricing__fields {
   margin-bottom: 1rem;
+}
+
+.admin-delivery-pricing__zone-name strong {
+  display: block;
 }
 
 .admin-delivery-pricing__keywords {

@@ -1,4 +1,5 @@
 import { prisma, type BusinessModule } from "@monana/db";
+import { slugifyUnitLabel, uniqueUnitCodeSuffix } from "@monana/utils";
 
 export type UnitDefinitionRecord = {
   id: string;
@@ -82,15 +83,12 @@ export async function assertActiveUnit(code: string, module: BusinessModule) {
 }
 
 export function slugifyUnitCode(input: string) {
-  const code = input
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 24);
-  if (!code) throw new Error("Unit code is required");
-  if (!/^[A-Z]/.test(code)) throw new Error("Unit code must start with a letter");
-  return code;
+  return slugifyUnitLabel(input);
+}
+
+async function listUnitCodes() {
+  const rows = await prisma.unitDefinition.findMany({ select: { code: true } });
+  return rows.map((r) => r.code);
 }
 
 export async function createUnit(data: {
@@ -105,10 +103,33 @@ export async function createUnit(data: {
   active?: boolean;
   sortOrder?: number;
 }) {
-  const code = data.code ? slugifyUnitCode(data.code) : slugifyUnitCode(data.labelEn);
-  const existing = await prisma.unitDefinition.findUnique({ where: { code } });
-  if (existing) throw new Error("Unit code already exists");
+  const taken = await listUnitCodes();
 
+  if (data.code) {
+    const code = slugifyUnitCode(data.code);
+    if (taken.includes(code)) {
+      const suggested = uniqueUnitCodeSuffix(code, taken);
+      throw new Error(
+        `Msimbo ${code} tayari unatumika. Tumia ${suggested} au acha msimbo wazi ili utengenezwe kiotomatiki.`
+      );
+    }
+    return prisma.unitDefinition.create({
+      data: {
+        code,
+        labelEn: data.labelEn.trim(),
+        labelSw: data.labelSw.trim(),
+        priceSuffix: data.priceSuffix.trim(),
+        quantitySuffixEn: data.quantitySuffixEn?.trim() || null,
+        quantitySuffixSw: data.quantitySuffixSw?.trim() || null,
+        icon: data.icon?.trim() || null,
+        module: data.module ?? null,
+        active: data.active ?? true,
+        sortOrder: data.sortOrder ?? ((await prisma.unitDefinition.aggregate({ _max: { sortOrder: true } }))._max.sortOrder ?? 0) + 10,
+      },
+    });
+  }
+
+  const code = uniqueUnitCodeSuffix(slugifyUnitCode(data.labelEn), taken);
   const maxOrder = await prisma.unitDefinition.aggregate({ _max: { sortOrder: true } });
 
   return prisma.unitDefinition.create({

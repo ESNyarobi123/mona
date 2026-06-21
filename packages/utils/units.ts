@@ -146,3 +146,29 @@ export function unitLabelsRecord(
   }
   return out;
 }
+
+/** Slug for unit code from English label or manual code input. */
+export function slugifyUnitLabel(input: string): string {
+  let code = input
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 24);
+  if (!code) throw new Error("Msimbo wa kipimo unahitajika");
+  if (!/^[A-Z]/.test(code)) code = `U_${code}`.slice(0, 24);
+  return code;
+}
+
+/** Pick a free code — appends _2, _3, … when the base slug is already taken. */
+export function uniqueUnitCodeSuffix(baseSlug: string, taken: Iterable<string>): string {
+  const codes = new Set([...taken].map((c) => c.toUpperCase()));
+  const slug = baseSlug.toUpperCase();
+  if (!codes.has(slug)) return slug;
+  for (let n = 2; n <= 99; n++) {
+    const suffix = `_${n}`;
+    const candidate = `${slug.slice(0, Math.max(1, 24 - suffix.length))}${suffix}`;
+    if (!codes.has(candidate)) return candidate;
+  }
+  throw new Error("Imeshindwa kutengeneza msimbo wa kipekee");
+}

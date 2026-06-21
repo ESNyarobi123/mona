@@ -6,6 +6,7 @@ import { useAppLocale } from "../providers/AppLocaleProvider";
 import { apiGet, getStoredUser } from "../../lib/admin-api";
 import { formatDate, formatMoney } from "../../lib/format";
 import { orderStatusLabel, SLOT_I18N } from "../../lib/customer-i18n";
+import { canCustomerPayOrder, isPayOnDeliveryOrder, needsPayOnDeliveryApproval } from "@monana/utils";
 
 type OrderItem = { name: string; quantity: string | number };
 type Payment = { id?: string; status: string } | null;
@@ -18,8 +19,11 @@ type OrderRow = {
   createdAt: string;
   mealSlot?: string | null;
   address?: string | null;
+  note?: string | null;
   items?: OrderItem[];
   payment?: Payment;
+  paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
+  submittedAt?: string | null;
 };
 
 type OrdersResponse = OrderRow[] | { items: OrderRow[]; meta: { total: number } };
@@ -40,6 +44,29 @@ const STATUS_CLASS: Record<string, string> = {
 
 const FILTER_IDS = ["ALL", "PENDING", "CONFIRMED", "PREPARING", "ON_THE_WAY", "DELIVERED"] as const;
 type FilterId = (typeof FILTER_IDS)[number];
+
+function canPayOrder(o: OrderRow) {
+  return canCustomerPayOrder(o);
+}
+
+function paymentStatusLabel(
+  o: OrderRow,
+  t: ReturnType<typeof useAppLocale>["t"]
+) {
+  if (o.payment?.status === "PAID" || o.payment?.status === "AWAITING_CONFIRMATION") {
+    return `${t("payment")}: ${o.payment.status.replace(/_/g, " ")}`;
+  }
+  if (isPayOnDeliveryOrder(o) && needsPayOnDeliveryApproval(o)) {
+    return t("orderAwaitingApproval");
+  }
+  if (isPayOnDeliveryOrder(o) && !o.submittedAt) {
+    return t("paymentOnDelivery");
+  }
+  if (o.payment) {
+    return `${t("payment")}: ${o.payment.status.replace(/_/g, " ")}`;
+  }
+  return t("paymentPending");
+}
 
 function itemsSummary(items: OrderItem[] | undefined, moreLabel: string) {
   if (!items?.length) return null;
@@ -217,23 +244,26 @@ export function CustomerOrdersList({ module }: { module: "RESTAURANT" | "GROCERY
                 {summary ? <p className="order-card__items">{summary}</p> : null}
 
                 {o.address ? <p className="order-card__address">📍 {o.address}</p> : null}
+                {o.note ? (
+                  <p className="order-card__address order-card__extra">💬 {o.note}</p>
+                ) : null}
 
                 <div className="order-card__foot">
                   <div className="order-card__meta">
-                    {o.payment ? (
-                      <span className="order-card__payment">
-                        {t("payment")}: {o.payment.status.replace(/_/g, " ")}
-                      </span>
-                    ) : (
-                      <span className="order-card__payment order-card__payment--due">{t("paymentPending")}</span>
-                    )}
+                    <span
+                      className={`order-card__payment ${
+                        canPayOrder(o) ? "order-card__payment--due" : ""
+                      }`}
+                    >
+                      {paymentStatusLabel(o, t)}
+                    </span>
                     <span className="order-card__items-count">
                       {o.items?.length ?? 0} {t("items")}
                     </span>
                   </div>
                   <div className="order-card__foot-right">
                     <strong className="order-card__total">{formatMoney(o.total)}</strong>
-                    {(!o.payment || o.payment.status === "PENDING") && o.status !== "CANCELLED" ? (
+                    {canPayOrder(o) ? (
                       <Link href={`/pay/${o.id}`} className="order-card__pay-btn landing-btn landing-btn--orange" onClick={(e) => e.stopPropagation()}>
                         {t("payNow")}
                       </Link>

@@ -27,6 +27,13 @@ type DeliveryZone = {
   active: boolean;
 };
 
+function zoneSwahiliLabel(zone: DeliveryZone) {
+  const sw = zone.nameSw?.trim();
+  if (!sw) return null;
+  if (sw.toLowerCase() === zone.name.trim().toLowerCase()) return null;
+  return sw;
+}
+
 const MODES: PricingConfig["mode"][] = ["FLAT_RATE", "MIN_ORDER_FREE", "ZONE"];
 
 type Props = {
@@ -237,12 +244,16 @@ export function DeliveryPricingAdmin({ module, titleKey, leadKey }: Props) {
                   </tr>
                 </thead>
                 <tbody>
-                  {zones.map((zone) => (
+                  {zones.map((zone) => {
+                    const swLabel = zoneSwahiliLabel(zone);
+                    return (
                     <tr key={zone.id}>
                       <td>
-                        <strong>{zone.name}</strong>
-                        {zone.nameSw ? <small>{zone.nameSw}</small> : null}
-                        <div className="admin-delivery-pricing__keywords">{zone.keywords.join(", ")}</div>
+                        <div className="admin-delivery-pricing__zone-name">
+                          <strong>{zone.name}</strong>
+                          {swLabel ? <div className="admin-table-sub">{swLabel}</div> : null}
+                          <div className="admin-delivery-pricing__keywords">{zone.keywords.join(", ")}</div>
+                        </div>
                       </td>
                       <td>
                         <input
@@ -286,7 +297,8 @@ export function DeliveryPricingAdmin({ module, titleKey, leadKey }: Props) {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

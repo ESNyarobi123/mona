@@ -1,5 +1,5 @@
 import { prisma, type Prisma } from "@monana/db";
-import { genOrderRef, normalizePaymentProofReference, paginatedResult, paymentReferenceDuplicateMessage, type PaginationParams } from "@monana/utils";
+import { genOrderRef, normalizePaymentProofReference, paginatedResult, paymentReferenceDuplicateMessage, needsPayOnDeliveryApproval, type PaginationParams } from "@monana/utils";
 
 const PROOF_REFERENCE_STATUSES = ["AWAITING_CONFIRMATION", "PAID", "REFUNDED"] as const;
 
@@ -36,7 +36,15 @@ export async function createPaymentRequest(orderId: string) {
   }
 
   const existing = await prisma.payment.findUnique({ where: { orderId } });
-  if (existing) return existing;
+  if (existing) {
+    if (existing.status === "FAILED") {
+      return prisma.payment.update({
+        where: { id: existing.id },
+        data: { status: "PENDING", reference: genOrderRef() },
+      });
+    }
+    return existing;
+  }
 
   return prisma.payment.create({
     data: {
@@ -105,19 +113,22 @@ export async function confirmPayment(paymentId: string) {
     data: { status: "PAID" },
   });
 
-  const orderUpdate: { status?: "CONFIRMED"; submittedAt: Date } = { submittedAt: new Date() };
+  const orderUpdate: { status?: "CONFIRMED"; submittedAt?: Date } = {};
   if (existing.order.paymentTiming === "PAY_ON_DELIVERY") {
-    if (existing.order.status === "PENDING") {
+    if (existing.order.status === "PENDING" && existing.order.submittedAt) {
       orderUpdate.status = "CONFIRMED";
     }
   } else {
     orderUpdate.status = "CONFIRMED";
+    orderUpdate.submittedAt = new Date();
   }
 
-  await prisma.order.update({
-    where: { id: payment.orderId },
-    data: orderUpdate,
-  });
+  if (Object.keys(orderUpdate).length) {
+    await prisma.order.update({
+      where: { id: payment.orderId },
+      data: orderUpdate,
+    });
+  }
 
   return payment;
 }
@@ -125,7 +136,7 @@ export async function confirmPayment(paymentId: string) {
 export async function failPayment(paymentId: string) {
   const existing = await prisma.payment.findUnique({
     where: { id: paymentId },
-    include: { order: { select: { paymentTiming: true, submittedAt: true } } },
+    include: { order: { select: { paymentTiming: true, submittedAt: true, status: true } } },
   });
   if (!existing) throw new Error("Malipo hayapatikani");
 
@@ -134,7 +145,7 @@ export async function failPayment(paymentId: string) {
     data: { status: "FAILED" },
   });
 
-  if (existing.order.paymentTiming === "PAY_ON_DELIVERY" && !existing.order.submittedAt) {
+  if (existing.order.paymentTiming === "PAY_ON_DELIVERY" && needsPayOnDeliveryApproval(existing.order)) {
     await prisma.order.update({
       where: { id: payment.orderId },
       data: { status: "CANCELLED" },
@@ -160,8 +171,8 @@ export async function requestPayOnDeliveryPayment(orderId: string, reference: st
     if (order.paymentTiming !== "PAY_ON_DELIVERY") {
       throw new Error("Oda hii si ya kulipia ukifika mzigo");
     }
-    if (order.submittedAt) {
-      throw new Error("Oda hii tayari imewasilishwa");
+    if (!order.submittedAt) {
+      throw new Error("Oda bado inasubiri idhini ya admin");
     }
     if (!["ON_THE_WAY", "DELIVERED"].includes(order.status)) {
       throw new Error("Omba kulipia baada ya kupokea mzigo wako");

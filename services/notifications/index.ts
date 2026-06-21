@@ -68,6 +68,7 @@ export async function notifyAdminNewOrder(params: {
   channel: string;
   total: number | string;
   address?: string | null;
+  note?: string | null;
   mealSlot?: string | null;
   customer?: { name?: string | null; phone: string } | null;
   items?: Array<{ name: string; quantity: number; price: number | string }>;
@@ -82,6 +83,7 @@ export async function notifyAdminNewOrder(params: {
       `Bidhaa:\n${lines}\n` +
       `Jumla: *${formatTZS(Number(params.total))}*\n` +
       `Anwani: ${params.address ?? "—"}\n` +
+      `${params.note ? `Maelezo: ${params.note}\n` : ""}` +
       `${params.mealSlot ? `Slot: ${params.mealSlot}\n` : ""}` +
       `Channel: ${params.channel}\n` +
       `Thibitisha malipo baada ya mteja kulipa.`
@@ -110,6 +112,7 @@ export async function notifyAdminPayOnDeliveryOrder(params: {
   channel: string;
   total: number | string;
   address?: string | null;
+  note?: string | null;
   mealSlot?: string | null;
   customer?: { name?: string | null; phone: string } | null;
   items?: Array<{ name: string; quantity: number; price: number | string }>;
@@ -118,15 +121,38 @@ export async function notifyAdminPayOnDeliveryOrder(params: {
   const lines =
     params.items?.map((i) => `  • ${i.quantity}x ${i.name}`).join("\n") ?? "  (hakuna items)";
   return notifyAdmin(
-    `📋 *Oda ya kulipia ukifika* #${shortId(params.id)}\n` +
+    `📋 *Ombi la kulipia ukifika* #${shortId(params.id)}\n` +
       `Huduma: ${brand}\n` +
       `Mteja: ${params.customer?.name ?? "—"} (${params.customer?.phone ?? "?"})\n` +
       `Bidhaa:\n${lines}\n` +
       `Jumla: *${formatTZS(Number(params.total))}*\n` +
       `Anwani: ${params.address ?? "—"}\n` +
+      `${params.note ? `Maelezo: ${params.note}\n` : ""}` +
       `${params.mealSlot ? `Slot: ${params.mealSlot}\n` : ""}` +
       `Channel: ${params.channel}\n\n` +
-      `⚠️ Oda haijawasilishwa — wasilisha mzigo, mteja atalipa na kutuma ombi la malipo.`
+      `⚠️ Oda haijawasilishwa — kubali au kataa ombi kwenye admin (Oda).`
+  );
+}
+
+export async function notifyCustomerPayOnDeliveryApproved(params: {
+  phone: string;
+  orderId: string;
+}) {
+  return notifyCustomer(
+    params.phone,
+    `✅ Ombi lako la kulipia ukifika #${shortId(params.orderId)} limekubaliwa!\n` +
+      `Oda yako sasa imeingia mfumoni — tunaandaa.`
+  );
+}
+
+export async function notifyCustomerPayOnDeliveryRejected(params: {
+  phone: string;
+  orderId: string;
+}) {
+  return notifyCustomer(
+    params.phone,
+    `❌ Ombi lako la kulipia ukifika #${shortId(params.orderId)} limekataliwa.\n` +
+      `Tafadhali wasiliana nasi au jaribu kulipa sasa.`
   );
 }
 

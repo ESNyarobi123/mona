@@ -65,10 +65,14 @@ export async function finishPaymentProof(phone: string, reference: string, reply
   };
 
   try {
+    const ref = reference.trim();
+    if (!ref || /^manual$/i.test(ref)) {
+      throw new Error(botMessage(locale, "paymentReferenceInvalid"));
+    }
     if (session.data.intentId) {
-      await api.submitPayment({ intentId: session.data.intentId, reference });
+      await api.submitPayment({ intentId: session.data.intentId, reference: ref });
     } else if (session.data.paymentId) {
-      await api.submitPayment({ paymentId: session.data.paymentId, reference });
+      await api.submitPayment({ paymentId: session.data.paymentId, reference: ref });
     } else {
       throw new Error(botMessage(locale, "paymentRefRejected"));
     }

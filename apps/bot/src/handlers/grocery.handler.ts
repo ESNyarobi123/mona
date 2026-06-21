@@ -359,7 +359,7 @@ export function renderWeeklyDeliverySlotsForOnDemand(
 
 function renderProductList(
   phone: string,
-  products: { name: string; price: string; unit?: string }[],
+  products: { name: string; price: string; unit?: string; inStock?: boolean }[],
   locale: AppLocale,
   header?: string
 ) {
@@ -368,7 +368,11 @@ function renderProductList(
     locale === "sw"
       ? "👉 Andika *namba* kuongeza · *maliza* ukimaliza"
       : "👉 Reply with a *number* to add · *done* when finished";
+  const oosLabel = locale === "sw" ? " (imeisha)" : " (out of stock)";
   return `${head}\n${numberedList(
-    products.map((p) => `${p.name} — ${formatPricePerUnit(Number(p.price), p.unit ?? "PIECE", locale)}`)
+    products.map((p) => {
+      const line = `${p.name} — ${formatPricePerUnit(Number(p.price), p.unit ?? "PIECE", locale)}`;
+      return p.inStock === false ? `${line}${oosLabel}` : line;
+    })
   )}\n\n${prompt}\n${botMessage(locale, "backHint")}`;
 }

@@ -87,6 +87,7 @@ export {
   getMarketRunByDate,
   getReportsDashboard,
   lockMarketRun,
+  unlockMarketRun,
   completeMarketRun,
   updatePackingCheck,
   autoGenerateMarketRunIfDue,
@@ -144,6 +145,7 @@ export async function updateProduct(
     imageUrl: string | null;
     categoryId: string | null;
     available: boolean;
+    inStock: boolean;
     unit: string;
   }>
 ) {
@@ -241,6 +243,7 @@ export async function createProduct(data: {
   imageUrl?: string;
   categoryId?: string;
   available?: boolean;
+  inStock?: boolean;
 }) {
   const unit = data.unit ?? "PIECE";
   await assertActiveUnit(unit, "GROCERY");

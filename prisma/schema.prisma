@@ -290,6 +290,8 @@ model Product {
   imageUrl    String?
   module      BusinessModule @default(GROCERY)
   available   Boolean        @default(true)
+  /// Visible in store but not purchasable when false (out of stock)
+  inStock     Boolean        @default(true)
   categoryId  String?
   category    Category?      @relation(fields: [categoryId], references: [id])
   createdAt   DateTime       @default(now())

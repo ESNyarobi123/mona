@@ -78,6 +78,27 @@ export async function updateMenu(id: string, data: Partial<{ name: string; descr
   return prisma.menu.update({ where: { id }, data });
 }
 
+export async function deleteMenu(id: string) {
+  const menu = await prisma.menu.findUnique({
+    where: { id },
+    include: { items: { select: { id: true } } },
+  });
+  if (!menu) throw new Error("Menyu haipatikani");
+
+  await prisma.$transaction(async (tx) => {
+    const itemIds = menu.items.map((item) => item.id);
+    if (itemIds.length > 0) {
+      await tx.orderItem.updateMany({
+        where: { menuItemId: { in: itemIds } },
+        data: { menuItemId: null },
+      });
+    }
+    await tx.menu.delete({ where: { id } });
+  });
+
+  return { deleted: true };
+}
+
 export async function getMenuItemById(id: string) {
   return prisma.menuItem.findUnique({ where: { id }, include: { menu: true, category: true } });
 }

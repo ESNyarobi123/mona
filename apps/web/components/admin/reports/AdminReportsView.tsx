@@ -185,6 +185,20 @@ export function AdminReportsView() {
     }
   }
 
+  async function handleUnlock() {
+    if (!run) return;
+    if (!window.confirm(t("reportsUnlockConfirm"))) return;
+    setBusy("unlock");
+    try {
+      await apiPost(`/api/admin/grocery/reports/${run.id}/unlock`, {});
+      await loadDashboard(deliveryDate, true);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t("error"));
+    } finally {
+      setBusy("");
+    }
+  }
+
   async function handleTickLine(
     orderId: string,
     lines: Array<{ key: string; name: string; unit: string; quantity: number; checked: boolean }>,
@@ -388,6 +402,16 @@ export function AdminReportsView() {
                   onClick={handleLock}
                 >
                   {busy === "lock" ? t("saving") : t("reportsLockNow")}
+                </button>
+              ) : null}
+              {run?.status === "LOCKED" ? (
+                <button
+                  type="button"
+                  className="admin-btn secondary sm"
+                  disabled={!!busy}
+                  onClick={handleUnlock}
+                >
+                  {busy === "unlock" ? t("saving") : t("reportsUnlockNow")}
                 </button>
               ) : null}
               {run ? (

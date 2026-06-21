@@ -120,6 +120,20 @@ export function getUpcomingGroceryDeliverySlots(opts?: {
   return slots;
 }
 
+/** Group consecutive slots by week label for picker UI (This week / Next week). */
+export function groupGroceryDeliverySlotsByWeek<T extends { weekLabel: string }>(slots: T[]) {
+  const groups: { weekLabel: string; slots: T[] }[] = [];
+  for (const slot of slots) {
+    const last = groups[groups.length - 1];
+    if (last?.weekLabel === slot.weekLabel) {
+      last.slots.push(slot);
+    } else {
+      groups.push({ weekLabel: slot.weekLabel, slots: [slot] });
+    }
+  }
+  return groups;
+}
+
 export function validateGroceryScheduledFor(
   scheduledFor: string | Date,
   cutoffHours = DEFAULT_CUTOFF_HOURS

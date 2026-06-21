@@ -1,5 +1,5 @@
 import { updateMenuSchema } from "@monana/types";
-import { updateMenu } from "@monana/restaurant";
+import { deleteMenu, updateMenu } from "@monana/restaurant";
 import { prisma } from "@monana/db";
 import { handle, ok, parseBody } from "../../../../../lib/api";
 import { ApiError, requireAdmin } from "../../../../../lib/auth";
@@ -24,5 +24,13 @@ export function PATCH(req: Request, { params }: Params) {
     const { id } = await params;
     const input = await parseBody(req, updateMenuSchema);
     return ok(await updateMenu(id, input));
+  });
+}
+
+export function DELETE(req: Request, { params }: Params) {
+  return handle(async () => {
+    requireAdmin(req);
+    const { id } = await params;
+    return ok(await deleteMenu(id));
   });
 }

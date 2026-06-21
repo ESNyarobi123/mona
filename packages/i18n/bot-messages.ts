@@ -52,6 +52,8 @@ export type BotMessageKey =
   | "payQrCaption"
   | "payNoQr"
   | "awaitingPayment"
+  | "paymentReferencePrompt"
+  | "paymentReferenceInvalid"
   | "paymentRefRejected"
   | "itemAdded"
   | "membershipReady"
@@ -59,6 +61,7 @@ export type BotMessageKey =
   | "backHome"
   | "cartEmptyHint"
   | "addressHint"
+  | "extraDetailsHint"
   | "paymentTimingPrompt"
   | "payLaterPlaced"
   | "payDeliveryChoose"
@@ -104,7 +107,7 @@ const EN: Record<BotMessageKey, string> = {
   paid: "🎉 Thank you! We got your payment.\nWe'll confirm shortly and update you. ✅",
   support: "📞 *Help*\nType *menu* to go back, or contact our team on the Monana app.",
   fallback: "Type *Hi* to start. 👋",
-  payHint: "After paying, type *paid* ✅",
+  payHint: "After paying, send your M-Pesa reference: *paid CODE* ✅",
   upfrontPaymentHint: "💳 Pay now to activate your membership.",
   pauseHint: "Pause: type *pause 1* (1 week) or *pause 2*.",
   basketEditHint: "Edit basket: type *edit* before the cutoff.",
@@ -146,12 +149,22 @@ const EN: Record<BotMessageKey, string> = {
   orderSubscription: "Subscription",
   orderReceived: "✅ *Order received!*",
   payInstructions:
-    "🧾 Order {ref}\n💰 To pay: *{amount}*\n\n📲 *How to pay (Lipa Namba):*\n1. Open M-Pesa / Tigo / Airtel / Halopesa\n2. Lipa Namba: *{lipa}*  ({name})\n3. Enter amount: *{amount}*",
+    "🧾 Order {ref}\n💰 To pay: *{amount}*\n\n📲 *How to pay (Lipa Namba):*\n1. Open M-Pesa / Tigo / Airtel / Halopesa\n2. Lipa Namba: *{lipa}*  ({name})\n3. Enter amount: *{amount}*\n\n✅ *After paying, send your M-Pesa reference:*\n👉 *paid ABC123XYZ*",
   payQrCaption:
-    "📷 Or just scan this QR to pay *{amount}*.\n\n✅ *When you're done paying, reply with one word:*\n👉 *paid*",
-  payNoQr: "✅ *When you're done paying, reply with one word:*\n👉 *paid*",
+    "📷 Or scan this QR to pay *{amount}*.\n\n✅ *After paying, send your M-Pesa reference:*\n👉 *paid ABC123XYZ*",
+  payNoQr:
+    "✅ *After paying, send your M-Pesa reference:*\n👉 *paid ABC123XYZ* (paste the code from your SMS)",
   awaitingPayment:
-    "💳 Still waiting for your payment.\n\n✅ Once you've paid, just reply: *paid*\n(You can also paste your M-Pesa code.)",
+    "💳 Still waiting for your payment.\n\n" +
+    "✅ Reply with your M-Pesa reference, e.g. *paid QFG7H2K9*\n" +
+    "Or paste the code from your M-Pesa SMS.",
+  paymentReferencePrompt:
+    "📝 *Send your M-Pesa reference*\n\n" +
+    "Paste the confirmation code from your M-Pesa SMS, or type:\n" +
+    "👉 *paid YOUR_CODE_HERE*",
+  paymentReferenceInvalid:
+    "❌ I need your M-Pesa reference code.\n\n" +
+    "Paste the code from your SMS (e.g. *QFG7H2K9*), or type *paid QFG7H2K9*",
   paymentRefRejected:
     "That payment reference could not be accepted. Check the code and try again.",
   itemAdded: "✅ Added: {item}",
@@ -160,10 +173,12 @@ const EN: Record<BotMessageKey, string> = {
   backHome: "🏠 Back to the main menu.",
   cartEmptyHint: "🛒 Your cart is empty — pick an item number first.",
   addressHint: "📍 Send your delivery address (area / street).\n↩️ _Type *0* to cancel_",
+  extraDetailsHint:
+    "💬 *Extra details* (required)\nGate, house color, door name, floor…\n↩️ _Type *0* to change address_",
   paymentTimingPrompt:
-    "💳 *How do you want to pay?*\n\n1️⃣ Pay now (Lipa Namba before delivery)\n2️⃣ Pay on delivery (after you receive your order)",
+    "💳 *How do you want to pay?*\n\n1️⃣ Pay now (recommended — Lipa Namba before delivery)\n2️⃣ Pay on delivery (send request to admin first)",
   payLaterPlaced:
-    "✅ *Order placed!* {ref}\n\nPay when you receive your delivery, then type *pay order* to submit your payment reference.",
+    "📨 *Request sent!* {ref}\n\nAdmin will review your pay-on-delivery request. We will notify you when your order is approved.",
   payDeliveryChoose: "💳 *Pay for which order?*\nReply with the order *number*.",
   noOrdersToPay: "No delivered orders waiting for payment right now.",
   menuGrocery: "Grocery",
@@ -198,7 +213,8 @@ const EN: Record<BotMessageKey, string> = {
   groceryNoPackages: "No packages available right now. Try *Build my basket* instead.",
   groceryHasSubActive: "You already have an active subscription. See options below.",
   groceryPackageEnrolled: "✅ *Subscribed!*\nPackage: *{name}*\n📅 {schedule}",
-  subscriptionPendingPay: "💳 Complete payment to activate your subscription. Reply *paid* after paying.",
+  subscriptionPendingPay:
+    "💳 Complete payment to activate your subscription. Send *paid YOUR_M-PESA_CODE* after paying.",
 };
 
 const SW: Record<BotMessageKey, string> = {
@@ -214,7 +230,7 @@ const SW: Record<BotMessageKey, string> = {
   paid: "🎉 Asante! Tumepokea malipo yako.\nTutathibitisha na kukujulisha hivi punde. ✅",
   support: "📞 *Msaada*\nAndika *menu* kurudi, au wasiliana nasi kupitia app ya Monana.",
   fallback: "Andika *Hi* kuanza. 👋",
-  payHint: "Ukishalipa, andika *nimelipa* ✅",
+  payHint: "Ukishalipa, tuma reference ya M-Pesa: *nimelipa NAMBA* ✅",
   upfrontPaymentHint: "💳 Lipa sasa ili uanachama uanze.",
   pauseHint: "Sitisha: andika *sitisha 1* (wiki 1) au *sitisha 2*.",
   basketEditHint: "Badilisha kikapu: andika *hariri* kabla ya muda kufika.",
@@ -256,12 +272,22 @@ const SW: Record<BotMessageKey, string> = {
   orderSubscription: "Usajili",
   orderReceived: "✅ *Oda imepokelewa!*",
   payInstructions:
-    "🧾 Oda {ref}\n💰 Kulipa: *{amount}*\n\n📲 *Jinsi ya kulipa (Lipa Namba):*\n1. Fungua M-Pesa / Tigo / Airtel / Halopesa\n2. Lipa Namba: *{lipa}*  ({name})\n3. Weka kiasi: *{amount}*",
+    "🧾 Oda {ref}\n💰 Kulipa: *{amount}*\n\n📲 *Jinsi ya kulipa (Lipa Namba):*\n1. Fungua M-Pesa / Tigo / Airtel / Halopesa\n2. Lipa Namba: *{lipa}*  ({name})\n3. Weka kiasi: *{amount}*\n\n✅ *Ukimaliza kulipa, tuma reference ya M-Pesa:*\n👉 *nimelipa ABC123XYZ*",
   payQrCaption:
-    "📷 Au skani QR hii kulipa *{amount}*.\n\n✅ *Ukimaliza kulipa, jibu kwa neno moja tu:*\n👉 *nimelipa*",
-  payNoQr: "✅ *Ukimaliza kulipa, jibu kwa neno moja tu:*\n👉 *nimelipa*",
+    "📷 Au skani QR hii kulipa *{amount}*.\n\n✅ *Ukimaliza kulipa, tuma reference ya M-Pesa:*\n👉 *nimelipa ABC123XYZ*",
+  payNoQr:
+    "✅ *Ukimaliza kulipa, tuma reference ya M-Pesa:*\n👉 *nimelipa ABC123XYZ* (bandika namba kutoka SMS)",
   awaitingPayment:
-    "💳 Bado nasubiri malipo yako.\n\n✅ Ukimaliza kulipa, jibu tu: *nimelipa*\n(Au bandika namba ya M-Pesa uliyopata.)",
+    "💳 Bado nasubiri malipo yako.\n\n" +
+    "✅ Jibu na reference ya M-Pesa, mf. *nimelipa QFG7H2K9*\n" +
+    "Au bandika namba iliyotoka kwenye SMS ya M-Pesa.",
+  paymentReferencePrompt:
+    "📝 *Tuma reference ya M-Pesa*\n\n" +
+    "Bandika namba iliyotoka kwenye SMS ya M-Pesa, au andika:\n" +
+    "👉 *nimelipa NAMBA_YAKO*",
+  paymentReferenceInvalid:
+    "❌ Nahitaji namba ya reference ya M-Pesa.\n\n" +
+    "Bandika namba kutoka SMS (mf. *QFG7H2K9*), au andika *nimelipa QFG7H2K9*",
   paymentRefRejected:
     "Reference hiyo haikubaliki. Angalia namba ya muamala na jaribu tena.",
   itemAdded: "✅ Imeongezwa: {item}",
@@ -270,10 +296,12 @@ const SW: Record<BotMessageKey, string> = {
   backHome: "🏠 Umerudi kwenye menyu kuu.",
   cartEmptyHint: "🛒 Kikapu ni tupu — chagua namba ya bidhaa kwanza.",
   addressHint: "📍 Tuma anwani ya kufikishia (eneo / mtaa).\n↩️ _Andika *0* kughairi_",
+  extraDetailsHint:
+    "💬 *Maelezo ya ziada* (lazima)\nMlango, rangi ya nyumba, jina la mlango, ghorofa…\n↩️ _Andika *0* kubadilisha anwani_",
   paymentTimingPrompt:
-    "💳 *Ungependa kulipiaje?*\n\n1️⃣ Lipa sasa (Lipa Namba kabla ya mzigo)\n2️⃣ Lipa ukifika (baada ya kupokea mzigo)",
+    "💳 *Ungependa kulipiaje?*\n\n1️⃣ Lipa sasa (inapendekezwa — Lipa Namba kabla ya mzigo)\n2️⃣ Lipa ukifika (tuma ombi kwa admin kwanza)",
   payLaterPlaced:
-    "✅ *Oda imewekwa!* {ref}\n\nLipa ukifika mzigo, kisha andika *lipa oda* kutuma reference ya malipo.",
+    "📨 *Ombi limetumwa!* {ref}\n\nAdmin ataangalia ombi lako la kulipia ukifika. Tutakujulisha oda ikikubaliwa.",
   payDeliveryChoose: "💳 *Lipa oda ipi?*\nAndika *namba* ya oda.",
   noOrdersToPay: "Hakuna oda iliyowasilishwa inayosubiri malipo kwa sasa.",
   menuGrocery: "Grocery",
@@ -308,7 +336,8 @@ const SW: Record<BotMessageKey, string> = {
   groceryNoPackages: "Hakuna vifurushi kwa sasa. Jaribu *Jenga kikapu changu*.",
   groceryHasSubActive: "Tayari una usajili unaotumika. Chaguo hapa chini.",
   groceryPackageEnrolled: "✅ *Umejiunga!*\nKifurushi: *{name}*\n📅 {schedule}",
-  subscriptionPendingPay: "💳 Maliza malipo ili uanze. Ukimaliza, andika *nimelipa*.",
+  subscriptionPendingPay:
+    "💳 Maliza malipo ili uanze. Ukimaliza, tuma *nimelipa NAMBA_YA_MPESA*.",
 };
 
 const MESSAGES: Record<AppLocale, Record<BotMessageKey, string>> = { en: EN, sw: SW };

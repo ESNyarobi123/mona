@@ -82,6 +82,17 @@ export async function POST(req: Request) {
       throw new ApiError("Huna ruhusa", 403);
     }
 
+    if (order.status === "CANCELLED") {
+      throw new ApiError("Oda hii ilifutwa", 409);
+    }
+
+    if (
+      order.paymentTiming === "PAY_ON_DELIVERY" &&
+      !["ON_THE_WAY", "DELIVERED"].includes(order.status)
+    ) {
+      throw new ApiError("Omba kulipia baada ya kupokea mzigo wako", 409);
+    }
+
     const payment = await createPaymentRequest(orderId);
     const { instructions, qrDataUrl } = await buildLipaPaymentInstructions(
       Number(payment.amount),

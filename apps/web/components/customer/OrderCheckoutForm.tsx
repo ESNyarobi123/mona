@@ -8,6 +8,7 @@ import { clearCart, getCart, type CartState } from "../../lib/cart";
 import { formatMoney, UNIT_LABELS } from "../../lib/format";
 import { slotLabel, tr } from "../../lib/customer-i18n";
 import { useAppLocale } from "../providers/AppLocaleProvider";
+import { GroceryDeliverySlotPicker } from "./GroceryDeliverySlotPicker";
 
 type Module = "RESTAURANT" | "GROCERY";
 
@@ -52,6 +53,7 @@ export function OrderCheckoutForm({ module, title }: Props) {
   const [deliverySlots, setDeliverySlots] = useState<
     { date: string; label: string; deliveryAt: string; weekLabel: string }[]
   >([]);
+  const [productStock, setProductStock] = useState<Map<string, boolean>>(new Map());
   const [selectedSlot, setSelectedSlot] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -78,17 +80,24 @@ export function OrderCheckoutForm({ module, title }: Props) {
 
   useEffect(() => {
     if (module !== "GROCERY") return;
-    apiGet<{ deliverySlots: { date: string; label: string; deliveryAt: string; weekLabel: string }[] }>(
-      "/api/grocery/store/on-demand"
-    )
+    apiGet<{
+      deliverySlots: { date: string; label: string; deliveryAt: string; weekLabel: string }[];
+      products: { id: string; inStock?: boolean }[];
+    }>(`/api/grocery/store/on-demand?locale=${locale}`)
       .then((catalog) => {
         setDeliverySlots(catalog.deliverySlots ?? []);
+        setProductStock(
+          new Map((catalog.products ?? []).map((p) => [p.id, p.inStock !== false]))
+        );
         if (catalog.deliverySlots?.[0]) {
           setSelectedSlot(catalog.deliverySlots[0].deliveryAt);
         }
       })
-      .catch(() => setDeliverySlots([]));
-  }, [module]);
+      .catch(() => {
+        setDeliverySlots([]);
+        setProductStock(new Map());
+      });
+  }, [module, locale]);
 
   useEffect(() => {
     if (!lines.length) {
@@ -139,9 +148,22 @@ export function OrderCheckoutForm({ module, title }: Props) {
       setError(t("addressRequired"));
       return;
     }
+    if (!note.trim() || note.trim().length < 3) {
+      setError(t("extraDetailsRequired"));
+      return;
+    }
     if (module === "GROCERY" && !selectedSlot) {
       setError(t("pickDeliverySlot"));
       return;
+    }
+    if (module === "GROCERY") {
+      const hasOutOfStock = lines.some(
+        (l) => l.productId && productStock.get(l.productId) === false
+      );
+      if (hasOutOfStock) {
+        setError(t("cartHasOutOfStock"));
+        return;
+      }
     }
 
     setLoading(true);
@@ -152,7 +174,7 @@ export function OrderCheckoutForm({ module, title }: Props) {
         module,
         channel: "WEB",
         address: address.trim(),
-        note: note.trim() || undefined,
+        note: note.trim(),
         items: lines.map((l) => ({
           productId: l.productId,
           menuItemId: l.menuItemId,
@@ -186,7 +208,7 @@ export function OrderCheckoutForm({ module, title }: Props) {
       }
 
       if (order.kind === "ORDER") {
-        setSuccess(t("checkoutPayLaterCreated"));
+        setSuccess(t("checkoutPayLaterRequestSent"));
         setTimeout(() => {
           router.push(cfg.ordersHref);
         }, 800);
@@ -323,19 +345,13 @@ export function OrderCheckoutForm({ module, title }: Props) {
             </header>
 
             {module === "GROCERY" ? (
-              <div className="enroll-day-grid checkout-delivery-grid">
-                {deliverySlots.map((slot) => (
-                  <button
-                    key={slot.date}
-                    type="button"
-                    className={`enroll-day-btn ${selectedSlot === slot.deliveryAt ? "enroll-day-btn--active" : ""}`}
-                    onClick={() => setSelectedSlot(slot.deliveryAt)}
-                  >
-                    <span>{slot.label}</span>
-                    <small>{slot.weekLabel}</small>
-                  </button>
-                ))}
-              </div>
+              <GroceryDeliverySlotPicker
+                className="checkout-delivery-picker"
+                slots={deliverySlots}
+                value={selectedSlot}
+                onChange={setSelectedSlot}
+                emptyLabel={t("noDeliverySlots")}
+              />
             ) : null}
 
             <div className="checkout-fields">
@@ -359,8 +375,7 @@ export function OrderCheckoutForm({ module, title }: Props) {
 
               <label className="checkout-field">
                 <span className="checkout-field__label">
-                  {t("extraDetails")}{" "}
-                  <span className="checkout-field__optional">{t("optional")}</span>
+                  {t("extraDetails")} <em className="checkout-field__req">*</em>
                 </span>
                 <div className="checkout-field__wrap checkout-field__wrap--textarea">
                   <span className="checkout-field__icon checkout-field__icon--top" aria-hidden>
@@ -371,6 +386,8 @@ export function OrderCheckoutForm({ module, title }: Props) {
                     onChange={(e) => setNote(e.target.value)}
                     rows={3}
                     placeholder={t("notePlaceholder")}
+                    required
+                    minLength={3}
                   />
                 </div>
               </label>
@@ -393,7 +410,12 @@ export function OrderCheckoutForm({ module, title }: Props) {
                   checked={paymentTiming === "PAY_NOW"}
                   onChange={() => setPaymentTiming("PAY_NOW")}
                 />
-                <span>{t("paymentTimingNow")}</span>
+                <span className="checkout-payment-timing__copy">
+                  <span className="checkout-payment-timing__label">
+                    {t("paymentTimingNow")}
+                    <span className="checkout-payment-timing__badge">{t("paymentTimingNowRecommended")}</span>
+                  </span>
+                </span>
               </label>
               <label className={`checkout-payment-timing__option ${paymentTiming === "PAY_ON_DELIVERY" ? "checkout-payment-timing__option--active" : ""}`}>
                 <input
@@ -432,7 +454,13 @@ export function OrderCheckoutForm({ module, title }: Props) {
               className={`landing-btn checkout-page__submit landing-btn--${cfg.theme === "green" ? "orange" : "navy"}`}
               disabled={loading || !!success}
             >
-              {loading ? t("submittingOrder") : success ? t("orderSubmitted") : t("confirmOrderStep")}
+              {loading
+                ? t("submittingOrder")
+                : success
+                  ? t("orderSubmitted")
+                  : paymentTiming === "PAY_ON_DELIVERY"
+                    ? t("sendPayLaterRequest")
+                    : t("confirmOrderStep")}
             </button>
             <Link href={cfg.shopHref} className="checkout-page__continue">
               {t(cfg.shopLabelKey)}

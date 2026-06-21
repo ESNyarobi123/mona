@@ -8,6 +8,7 @@ import { orderStatusLabel, SLOT_I18N } from "../../lib/customer-i18n";
 import { formatDate, formatMoney } from "../../lib/format";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 import { isOrderActive } from "../../lib/order-timeline";
+import { canCustomerPayOrder } from "@monana/utils";
 
 type Me = {
   id: string;
@@ -29,6 +30,8 @@ type OrderRow = {
   mealSlot?: string | null;
   items?: OrderItem[];
   payment?: { status: string } | null;
+  paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
+  submittedAt?: string | null;
 };
 
 type SubscriptionRow = {
@@ -220,8 +223,7 @@ export function AccountDashboardView() {
                   const meta = MODULE_META[o.module as keyof typeof MODULE_META] ?? MODULE_META.GROCERY;
                   const preview = itemsPreview(o.items);
                   const slotLabel = o.mealSlot ? SLOT_I18N[o.mealSlot]?.[locale] : null;
-                  const needsPay =
-                    o.status !== "CANCELLED" && (!o.payment || o.payment.status === "PENDING");
+                  const needsPay = canCustomerPayOrder(o);
                   const statusLabel = orderStatusLabel(locale, o.status);
                   const moduleLabel = o.module === "RESTAURANT" ? t("navRestOrders") : t("navGrocOrders");
 

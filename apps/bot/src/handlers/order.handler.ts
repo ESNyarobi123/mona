@@ -2,8 +2,8 @@ import type { IncomingMessage } from "../connection/whatsapp";
 import { botMessage } from "@monana/i18n";
 import {
   BOT_KEYWORDS,
-  extractPaymentReference,
-  extractMpesaCode,
+  isPaidWithoutReference,
+  parseCustomerPaymentReference,
   matchPauseWeeks,
   matchesKeyword,
 } from "@monana/i18n";
@@ -15,6 +15,7 @@ import {
   frequencyLabel,
   localeDateString,
   localeDateTimeString,
+  canPayOnDeliveryOrder,
 } from "@monana/utils";
 import { getSession, patchSession, clearSession, sessionLocale, type AppLocale } from "../services/session.service";
 import { api } from "../services/api.service";
@@ -46,9 +47,8 @@ export async function handleMessage(incoming: IncomingMessage, reply: Reply): Pr
   const session = getSession(phone);
   const locale = sessionLocale(phone);
 
-  const paymentRef = extractPaymentReference(text, locale);
-  if (paymentRef && session.data.paymentId) {
-    return handlePaymentProof(phone, paymentRef, reply);
+  if (session.state === "AWAIT_PAYMENT" || session.state === "ASK_PAYMENT_REFERENCE") {
+    return handlePaymentFlowMessage(phone, text, reply);
   }
 
   if (isAuthKeyword(lower) || session.state === "REGISTER_NAME") {
@@ -103,14 +103,14 @@ export async function handleMessage(incoming: IncomingMessage, reply: Reply): Pr
       return handleGroceryDelivery(phone, lower, reply);
     case "ASK_ADDRESS":
       return handleAddress(phone, text, reply);
+    case "ASK_EXTRA_DETAILS":
+      return handleExtraDetails(phone, text, reply);
     case "ASK_PAYMENT_TIMING":
       return handlePaymentTiming(phone, lower, reply);
     case "CHOOSING_PAY_ORDER":
       return handleChoosingPayOrder(phone, lower, reply);
     case "ASK_SUB_ADDRESS":
       return handleSubAddress(phone, text, reply);
-    case "AWAIT_PAYMENT":
-      return handleAwaitingPayment(phone, text, reply);
     case "CHOOSING_RESTAURANT_HUB":
       return handleRestaurantHub(phone, lower, reply);
     case "CHOOSING_RESTAURANT_MEMBERSHIP_SLOTS":
@@ -140,16 +140,37 @@ function withBack(phone: string, body: string): string {
 }
 
 /**
- * While a customer is paying: accept a pasted mobile-money code as proof,
- * otherwise gently remind them they only need to reply "nimelipa".
- * (A bare "nimelipa"/"paid" is already caught earlier by the keyword check.)
+ * Collect M-Pesa reference after Lipa Namba payment on WhatsApp.
  */
-async function handleAwaitingPayment(phone: string, text: string, reply: Reply) {
-  const code = extractMpesaCode(text);
-  if (code && getSession(phone).data.paymentId) {
-    return handlePaymentProof(phone, code, reply);
+async function handlePaymentFlowMessage(phone: string, text: string, reply: Reply) {
+  const session = getSession(phone);
+  const locale = sessionLocale(phone);
+
+  if (!session.data.paymentId && !session.data.intentId) {
+    patchSession(phone, "MENU", {
+      locale: session.data.locale,
+      userId: session.data.userId,
+      userName: session.data.userName,
+      token: session.data.token,
+      botMenu: session.data.botMenu,
+      cart: [],
+    });
+    return reply(msg(phone, "fallback"));
   }
-  return reply(msg(phone, "awaitingPayment"));
+
+  const ref = parseCustomerPaymentReference(text, locale);
+  if (ref) {
+    return handlePaymentProof(phone, ref, reply);
+  }
+
+  if (session.state === "AWAIT_PAYMENT" && isPaidWithoutReference(text)) {
+    patchSession(phone, "ASK_PAYMENT_REFERENCE", session.data);
+    return reply(msg(phone, "paymentReferencePrompt"));
+  }
+
+  return reply(
+    msg(phone, session.state === "ASK_PAYMENT_REFERENCE" ? "paymentReferenceInvalid" : "awaitingPayment")
+  );
 }
 
 async function handleLanguageChoice(phone: string, choice: string, reply: Reply) {
@@ -409,6 +430,16 @@ async function handleChoosing(phone: string, input: string, reply: Reply) {
   const qty = match[2] ? Number(match[2]) : 1;
   const item = list[index];
   if (!item) return reply(withBack(phone, msg(phone, "askMoreOrDone")));
+  if (session.data.module === "GROCERY" && "inStock" in item && item.inStock === false) {
+    return reply(
+      withBack(
+        phone,
+        locale === "sw"
+          ? `❌ *${item.name}* imeisha stoo — haiwezi kuongezwa.`
+          : `❌ *${item.name}* is out of stock — cannot add.`
+      )
+    );
+  }
 
   const cart = [...session.data.cart];
   const key = session.data.module === "GROCERY" ? "productId" : "menuItemId";
@@ -504,16 +535,34 @@ async function handleAddress(phone: string, address: string, reply: Reply) {
     summary = "";
   }
 
-  patchSession(phone, "ASK_PAYMENT_TIMING", { address });
-  return reply(`${msg(phone, "paymentTimingPrompt")}${summary}`);
+  patchSession(phone, "ASK_EXTRA_DETAILS", { address });
+  return reply(`${msg(phone, "extraDetailsHint")}${summary}`);
+}
+
+async function handleExtraDetails(phone: string, text: string, reply: Reply) {
+  const session = getSession(phone);
+  const locale = sessionLocale(phone);
+  const trimmed = text.trim();
+
+  if (trimmed === "0") {
+    patchSession(phone, "ASK_ADDRESS", { note: undefined });
+    return reply(msg(phone, "addressHint"));
+  }
+
+  if (trimmed.length < 3) {
+    return reply(withBack(phone, msg(phone, "nameTooShort")));
+  }
+
+  patchSession(phone, "ASK_PAYMENT_TIMING", { note: trimmed });
+  return reply(withBack(phone, msg(phone, "paymentTimingPrompt")));
 }
 
 async function handlePaymentTiming(phone: string, input: string, reply: Reply) {
   const session = getSession(phone);
   const locale = sessionLocale(phone);
-  const { userId, module, cart, mealSlot, scheduledFor, address } = session.data;
+  const { userId, module, cart, mealSlot, scheduledFor, address, note } = session.data;
 
-  if (!userId || !module || !cart.length || !address) {
+  if (!userId || !module || !cart.length || !address || !note) {
     clearSession(phone);
     return reply(msg(phone, "fallback"));
   }
@@ -529,6 +578,7 @@ async function handlePaymentTiming(phone: string, input: string, reply: Reply) {
       userId,
       module,
       address,
+      note,
       mealSlot,
       scheduledFor,
       items,
@@ -539,6 +589,7 @@ async function handlePaymentTiming(phone: string, input: string, reply: Reply) {
       membershipMode: false,
       scheduledFor: undefined,
       address: undefined,
+      note: undefined,
     });
     return reply(
       botMessage(locale, "payLaterPlaced", { ref: `#${order.id.slice(-6).toUpperCase()}` })
@@ -553,6 +604,7 @@ async function handlePaymentTiming(phone: string, input: string, reply: Reply) {
     userId,
     module,
     address,
+    note,
     mealSlot,
     scheduledFor,
     items,
@@ -567,13 +619,7 @@ async function handlePaymentTiming(phone: string, input: string, reply: Reply) {
 function eligiblePayOnDeliveryOrders(
   orders: Awaited<ReturnType<typeof api.getUserOrders>>
 ) {
-  return orders.filter(
-    (o) =>
-      o.paymentTiming === "PAY_ON_DELIVERY" &&
-      !o.submittedAt &&
-      ["ON_THE_WAY", "DELIVERED"].includes(o.status) &&
-      (!o.payment || ["PENDING", "FAILED"].includes(o.payment.status))
-  );
+  return orders.filter(canPayOnDeliveryOrder);
 }
 
 async function handlePayDeliveryOrder(phone: string, reply: Reply) {
@@ -709,7 +755,7 @@ async function handlePaymentProof(phone: string, reference: string, reply: Reply
 }
 
 function renderProductList(
-  products: { name: string; price: string; unit?: string }[],
+  products: { name: string; price: string; unit?: string; inStock?: boolean }[],
   locale: AppLocale,
   header?: string
 ) {
@@ -719,8 +765,12 @@ function renderProductList(
     locale === "sw"
       ? "👉 Andika *namba* kuongeza · *maliza* ukimaliza"
       : "👉 Reply with a *number* to add · *done* when finished";
+  const oosLabel = locale === "sw" ? " (imeisha)" : " (out of stock)";
   return `${head}\n${numberedList(
-    products.map((p) => `${p.name} — ${formatPricePerUnit(Number(p.price), p.unit ?? "PIECE", locale)}`)
+    products.map((p) => {
+      const line = `${p.name} — ${formatPricePerUnit(Number(p.price), p.unit ?? "PIECE", locale)}`;
+      return p.inStock === false ? `${line}${oosLabel}` : line;
+    })
   )}\n\n${prompt}\n${botMessage(locale, "backHint")}`;
 }
 

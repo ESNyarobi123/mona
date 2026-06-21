@@ -22,6 +22,7 @@ type Product = {
   price: string | number;
   unit: string;
   available: boolean;
+  inStock: boolean;
   categoryId: string | null;
   category: { id: string; name: string } | null;
 };
@@ -47,6 +48,7 @@ type ProductFormState = {
   categoryId: string;
   unit: string;
   available: boolean;
+  inStock: boolean;
   isHot: boolean;
   hotBadge: string;
 };
@@ -59,6 +61,7 @@ const EMPTY_FORM: ProductFormState = {
   categoryId: "",
   unit: "KG",
   available: true,
+  inStock: true,
   isHot: false,
   hotBadge: "🔥 Hot",
 };
@@ -78,6 +81,7 @@ function productToForm(product: Product, hot?: ManualPick | null): ProductFormSt
     categoryId: product.categoryId ?? product.category?.id ?? "",
     unit: product.unit ?? "PIECE",
     available: product.available,
+    inStock: product.inStock,
     isHot: hot?.active ?? false,
     hotBadge: hot?.badge ?? "🔥 Hot",
   };
@@ -97,6 +101,7 @@ export default function GroceryProductsPage() {
   const [search, setSearch] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterAvailable, setFilterAvailable] = useState<"" | "yes" | "no">("");
+  const [filterStock, setFilterStock] = useState<"" | "in" | "out">("");
   const [form, setForm] = useState<ProductFormState>(EMPTY_FORM);
 
   function loadHotPicks() {
@@ -138,6 +143,7 @@ export default function GroceryProductsPage() {
       total: products.length,
       available: products.filter((p) => p.available).length,
       hidden: products.filter((p) => !p.available).length,
+      outOfStock: products.filter((p) => p.available && !p.inStock).length,
       hot: hotByProductId.size,
       categories: categories.length,
     }),
@@ -153,9 +159,11 @@ export default function GroceryProductsPage() {
       }
       if (filterAvailable === "yes" && !product.available) return false;
       if (filterAvailable === "no" && product.available) return false;
+      if (filterStock === "in" && !product.inStock) return false;
+      if (filterStock === "out" && product.inStock) return false;
       return true;
     });
-  }, [products, search, filterCategory, filterAvailable]);
+  }, [products, search, filterCategory, filterAvailable, filterStock]);
 
   function openCreate() {
     setEditingId(null);
@@ -177,6 +185,15 @@ export default function GroceryProductsPage() {
   async function toggleAvailable(product: Product) {
     try {
       await apiPatch(`/api/grocery/products/${product.id}`, { available: !product.available });
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t("error"));
+    }
+  }
+
+  async function toggleInStock(product: Product) {
+    try {
+      await apiPatch(`/api/grocery/products/${product.id}`, { inStock: !product.inStock });
       load();
     } catch (e) {
       alert(e instanceof Error ? e.message : t("error"));
@@ -215,6 +232,7 @@ export default function GroceryProductsPage() {
         unit: form.unit,
         categoryId: form.categoryId || null,
         available: form.available,
+        inStock: form.inStock,
       };
 
       let productId = editingId;
@@ -274,8 +292,9 @@ export default function GroceryProductsPage() {
       <div className="admin-kpi-grid">
         <AdminKpiCard label={t("products")} value={stats.total} tone="grocery" icon="🏷️" />
         <AdminKpiCard label={t("available")} value={stats.available} tone="success" />
+        <AdminKpiCard label={t("outOfStock")} value={stats.outOfStock} tone="warning" trendUp={false} />
+        <AdminKpiCard label={t("hidden")} value={stats.hidden} tone="default" />
         <AdminKpiCard label={t("hotPick")} value={stats.hot} tone="accent" icon="🔥" />
-        <AdminKpiCard label={t("categories")} value={stats.categories} tone="default" icon="📁" />
       </div>
 
       <AdminPanel title={t("filter")} badge={tf("shownCount", { n: filteredProducts.length })}>
@@ -313,6 +332,16 @@ export default function GroceryProductsPage() {
             <option value="yes">{t("available")}</option>
             <option value="no">{t("hidden")}</option>
           </select>
+          <select
+            className="admin-select admin-menu-toolbar__select"
+            value={filterStock}
+            onChange={(e) => setFilterStock(e.target.value as "" | "in" | "out")}
+            aria-label={t("filterStockAria")}
+          >
+            <option value="">{t("allStock")}</option>
+            <option value="in">{t("inStock")}</option>
+            <option value="out">{t("outOfStock")}</option>
+          </select>
         </div>
       </AdminPanel>
 
@@ -338,7 +367,7 @@ export default function GroceryProductsPage() {
               return (
                 <li
                   key={product.id}
-                  className={`admin-menu-card admin-menu-card--grocery${product.available ? "" : " admin-menu-card--off"}`}
+                  className={`admin-menu-card admin-menu-card--grocery${product.available ? "" : " admin-menu-card--off"}${product.available && !product.inStock ? " admin-menu-card--oos" : ""}`}
                 >
                   <div className="admin-menu-card__head">
                     {product.imageUrl ? (
@@ -358,9 +387,15 @@ export default function GroceryProductsPage() {
                       </span>
                     </div>
                     <span
-                      className={`admin-menu-card__status${product.available ? " admin-menu-card__status--on" : ""}`}
+                      className={`admin-menu-card__status${
+                        !product.available
+                          ? ""
+                          : product.inStock
+                            ? " admin-menu-card__status--on"
+                            : " admin-menu-card__status--oos"
+                      }`}
                     >
-                      {product.available ? t("statusOn") : t("statusOff")}
+                      {!product.available ? t("statusOff") : product.inStock ? t("statusOn") : t("outOfStock")}
                     </span>
                   </div>
 
@@ -368,6 +403,9 @@ export default function GroceryProductsPage() {
                     <div className="admin-menu-card__meta">
                       {hot ? (
                         <span className="admin-kitchen-pill admin-kitchen-pill--hot">{hot.badge ?? "🔥 Hot"}</span>
+                      ) : null}
+                      {!product.inStock && product.available ? (
+                        <span className="admin-kitchen-pill admin-kitchen-pill--warning">{t("outOfStock")}</span>
                       ) : null}
                       <span className="admin-menu-card__price">
                         {formatPricePerUnit(Number(product.price), product.unit ?? "PIECE")}
@@ -389,8 +427,17 @@ export default function GroceryProductsPage() {
                       className="admin-btn sm secondary"
                       onClick={() => toggleAvailable(product)}
                     >
-                      {product.available ? t("disable") : t("enable")}
+                      {product.available ? t("hidden") : t("available")}
                     </button>
+                    {product.available ? (
+                      <button
+                        type="button"
+                        className="admin-btn sm secondary"
+                        onClick={() => toggleInStock(product)}
+                      >
+                        {product.inStock ? t("markOutOfStock") : t("restock")}
+                      </button>
+                    ) : null}
                     <button type="button" className="admin-btn sm danger" onClick={() => removeProduct(product)}>
                       {t("delete")}
                     </button>
@@ -507,7 +554,7 @@ export default function GroceryProductsPage() {
 
                 <div className="admin-crud-form__field">
                   <label className="admin-crud-form__label" htmlFor="product-available">
-                    {t("status")}
+                    {t("productVisibility")}
                   </label>
                   <select
                     id="product-available"
@@ -517,6 +564,22 @@ export default function GroceryProductsPage() {
                   >
                     <option value="yes">{t("availableInStore")}</option>
                     <option value="no">{t("hidden")}</option>
+                  </select>
+                </div>
+
+                <div className="admin-crud-form__field">
+                  <label className="admin-crud-form__label" htmlFor="product-stock">
+                    {t("productStock")}
+                  </label>
+                  <select
+                    id="product-stock"
+                    className="admin-select"
+                    value={form.inStock ? "yes" : "no"}
+                    onChange={(e) => setForm({ ...form, inStock: e.target.value === "yes" })}
+                    disabled={!form.available}
+                  >
+                    <option value="yes">{t("inStock")}</option>
+                    <option value="no">{t("outOfStock")}</option>
                   </select>
                 </div>
 

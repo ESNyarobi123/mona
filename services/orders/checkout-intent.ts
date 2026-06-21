@@ -65,6 +65,7 @@ async function resolveLineItem(it: { productId?: string; menuItemId?: string; qu
   if (it.productId) {
     const p = await prisma.product.findUnique({ where: { id: it.productId } });
     if (!p || !p.available) throw new Error(`Bidhaa haipatikani: ${it.productId}`);
+    if (!p.inStock) throw new Error(`"${p.name}" imeisha stoo — haiwezi kuongezwa kwenye oda.`);
     return {
       productId: p.id,
       menuItemId: null as string | null,

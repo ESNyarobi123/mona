@@ -229,6 +229,7 @@ async function resolvePackageLineItems(items: PackageItem[]) {
     items.map(async (it) => {
       const p = await prisma.product.findUnique({ where: { id: it.productId } });
       if (!p || !p.available) throw new Error(`Bidhaa haipatikani kwenye mfuko: ${it.productId}`);
+      if (!p.inStock) throw new Error(`"${p.name}" imeisha stoo — haiwezi kuongezwa kwenye oda.`);
       return {
         productId: p.id,
         menuItemId: null as string | null,

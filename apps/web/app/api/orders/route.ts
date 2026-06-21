@@ -68,6 +68,7 @@ export async function POST(req: Request) {
         channel: order.channel,
         total: Number(order.total),
         address: order.address,
+        note: order.note,
         mealSlot: order.mealSlot,
         customer: order.user ?? user,
         items: order.items.map((i) => ({

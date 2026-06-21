@@ -12,6 +12,7 @@ export type HotItem = {
   imageUrl?: string | null;
   badge?: string | null;
   sortOrder: number;
+  inStock?: boolean;
   /** AUTO only — order count in lookback window */
   orderCount?: number;
   /** AUTO only — total quantity sold */
@@ -116,6 +117,7 @@ export async function computeAutoHotItems(module: BusinessModule, limit?: number
           imageUrl: p.imageUrl,
           badge: "🔥 Hot",
           sortOrder: i,
+          inStock: p.inStock,
           orderCount: r._count.orderId,
           quantitySold: Number(r._sum.quantity ?? 0),
         };
@@ -194,6 +196,7 @@ function manualPickToHotItem(
       imageUrl: pick.product.imageUrl,
       badge: pick.badge ?? "🔥 Hot",
       sortOrder: pick.sortOrder ?? index,
+      inStock: pick.product.inStock,
     };
   }
   if (pick.menuItem) {

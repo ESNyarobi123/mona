@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { formatPricePerUnit } from "@monana/utils";
+import { formatPricePerUnit, slugifyUnitLabel, uniqueUnitCodeSuffix } from "@monana/utils";
 import { matchesAdminSearch } from "../../../../../lib/admin-search";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../../../../lib/admin-api";
 import { AdminPageHeader } from "../../../../../components/admin/AdminPageHeader";
@@ -52,14 +52,56 @@ const EMPTY_FORM: UnitFormState = {
   active: true,
 };
 
-function slugPreview(label: string) {
-  const code = label
+function defaultPriceSuffix(labelEn: string) {
+  const fromLabel = labelEn
     .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
     .slice(0, 24);
-  return code || "UNIT";
+  return fromLabel || "unit";
+}
+
+function normalizeUnitCodeInput(code: string | undefined) {
+  const trimmed = (code ?? "").trim().toUpperCase().replace(/[^A-Z0-9_]/g, "");
+  if (!trimmed) return undefined;
+  if (!/^[A-Z][A-Z0-9_]*$/.test(trimmed)) return undefined;
+  return trimmed;
+}
+
+function resolveUnitCode(form: UnitFormState, takenCodes: string[]) {
+  const explicit = normalizeUnitCodeInput(form.code);
+  if (explicit) return { code: explicit, auto: false };
+  const label = form.labelEn.trim();
+  if (!label) return { code: "UNIT", auto: true };
+  const base = slugifyUnitLabel(label);
+  return { code: uniqueUnitCodeSuffix(base, takenCodes), auto: true };
+}
+
+function buildCreatePayload(form: UnitFormState, restaurantContext: boolean) {
+  const priceSuffix = form.priceSuffix.trim() || defaultPriceSuffix(form.labelEn);
+  const code = normalizeUnitCodeInput(form.code);
+  return {
+    ...(code ? { code } : {}),
+    labelEn: form.labelEn.trim(),
+    labelSw: form.labelSw.trim(),
+    priceSuffix,
+    quantitySuffixEn: form.quantitySuffixEn.trim() || undefined,
+    quantitySuffixSw: form.quantitySuffixSw.trim() || undefined,
+    icon: form.icon.trim() || undefined,
+    module: form.module || (restaurantContext ? "RESTAURANT" : "GROCERY"),
+    active: form.active,
+  };
+}
+
+function slugPreview(label: string, takenCodes: string[] = []) {
+  const trimmed = label.trim();
+  if (!trimmed) return "UNIT";
+  try {
+    const base = slugifyUnitLabel(trimmed);
+    return uniqueUnitCodeSuffix(base, takenCodes);
+  } catch {
+    return "UNIT";
+  }
 }
 
 function unitToForm(unit: UnitRow): UnitFormState {
@@ -80,13 +122,15 @@ function UnitPreview({
   form,
   locale,
   codeOverride,
+  takenCodes = [],
 }: {
   form: UnitFormState;
   locale: "en" | "sw";
   codeOverride?: string;
+  takenCodes?: string[];
 }) {
   const { t } = useAdminLocale();
-  const code = codeOverride ?? (form.code.trim() || slugPreview(form.labelEn));
+  const code = codeOverride ?? resolveUnitCode(form, takenCodes).code;
   const name = locale === "sw" ? form.labelSw || form.labelEn : form.labelEn || form.labelSw;
   const sub = locale === "sw" ? form.labelEn : form.labelSw;
   const unitDef = {
@@ -121,6 +165,7 @@ export default function GroceryUnitsPage() {
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [formError, setFormError] = useState("");
   const [editing, setEditing] = useState<UnitRow | null>(null);
   const [editForm, setEditForm] = useState<UnitFormState>(EMPTY_FORM);
 
@@ -168,38 +213,45 @@ export default function GroceryUnitsPage() {
     [units, search]
   );
 
+  const takenCodes = useMemo(() => units.map((u) => u.code), [units]);
+  const createCodePreview = useMemo(() => resolveUnitCode(form, takenCodes), [form, takenCodes]);
+
   function openCreate() {
+    setFormError("");
     setForm({
       ...EMPTY_FORM,
-      module: restaurantContext ? "RESTAURANT" : "",
+      module: restaurantContext ? "RESTAURANT" : "GROCERY",
     });
     setShowCreate(true);
   }
 
   function closeCreate() {
     setShowCreate(false);
+    setFormError("");
     setForm(EMPTY_FORM);
   }
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    setFormError("");
+    if (!form.labelEn.trim() || !form.labelSw.trim()) {
+      setFormError(t("unitFillLabels"));
+      return;
+    }
+    const explicit = normalizeUnitCodeInput(form.code);
+    if (explicit && takenCodes.includes(explicit)) {
+      const suggested = uniqueUnitCodeSuffix(explicit, takenCodes);
+      setFormError(tf("unitCodeTaken", { code: explicit, suggested }));
+      return;
+    }
     setSaving(true);
     try {
-      await apiPost("/api/admin/units", {
-        ...(form.code.trim() ? { code: form.code.trim() } : {}),
-        labelEn: form.labelEn.trim(),
-        labelSw: form.labelSw.trim(),
-        priceSuffix: form.priceSuffix.trim(),
-        quantitySuffixEn: form.quantitySuffixEn.trim() || undefined,
-        quantitySuffixSw: form.quantitySuffixSw.trim() || undefined,
-        icon: form.icon.trim() || undefined,
-        module: form.module || null,
-        active: form.active,
-      });
+      await apiPost("/api/admin/units", buildCreatePayload(form, restaurantContext));
       closeCreate();
       load();
     } catch (err) {
-      alert(err instanceof Error ? err.message : t("error"));
+      const message = err instanceof Error ? err.message : t("error");
+      setFormError(message);
     } finally {
       setSaving(false);
     }
@@ -448,7 +500,19 @@ export default function GroceryUnitsPage() {
                       id="unit-label-en"
                       className="admin-crud-form__input"
                       value={form.labelEn}
-                      onChange={(e) => setForm({ ...form, labelEn: e.target.value })}
+                      onChange={(e) => {
+                        const labelEn = e.target.value;
+                        setForm((prev) => ({
+                          ...prev,
+                          labelEn,
+                          priceSuffix:
+                            prev.priceSuffix.trim() === ""
+                              ? labelEn.trim()
+                                ? defaultPriceSuffix(labelEn)
+                                : ""
+                              : prev.priceSuffix,
+                        }));
+                      }}
                       placeholder="Kilogram"
                       required
                       autoFocus
@@ -475,10 +539,16 @@ export default function GroceryUnitsPage() {
                       id="unit-code"
                       className="admin-crud-form__input"
                       value={form.code}
-                      onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })}
-                      placeholder={slugPreview(form.labelEn)}
+                      onChange={(e) =>
+                        setForm({ ...form, code: e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, "") })
+                      }
+                      placeholder={slugPreview(form.labelEn, takenCodes)}
                     />
-                    <p className="admin-crud-form__hint">{t("unitCodeHint")}</p>
+                    <p className="admin-crud-form__hint">
+                      {createCodePreview.auto && form.labelEn.trim()
+                        ? tf("unitCodeAutoHint", { code: createCodePreview.code })
+                        : t("unitCodeHint")}
+                    </p>
                   </div>
                   <div className="admin-crud-form__field">
                     <label className="admin-crud-form__label" htmlFor="unit-suffix">
@@ -564,14 +634,9 @@ export default function GroceryUnitsPage() {
                     </label>
                   </div>
                 </div>
+                {formError ? <p className="admin-error">{formError}</p> : null}
                 <div className="admin-crud-form__actions">
-                  <button
-                    type="submit"
-                    className="admin-btn"
-                    disabled={
-                      saving || !form.labelEn.trim() || !form.labelSw.trim() || !form.priceSuffix.trim()
-                    }
-                  >
+                  <button type="submit" className="admin-btn" disabled={saving}>
                     {saving ? t("saving") : t("addUnit")}
                   </button>
                   <button type="button" className="admin-btn secondary" onClick={closeCreate}>
@@ -580,7 +645,7 @@ export default function GroceryUnitsPage() {
                 </div>
               </div>
               <aside className="admin-unit-modal-form__aside">
-                <UnitPreview form={form} locale={locale} />
+                <UnitPreview form={form} locale={locale} takenCodes={takenCodes} />
               </aside>
             </form>
           </div>

@@ -480,6 +480,20 @@ export async function lockMarketRun(id: string) {
   return getMarketRunById(id);
 }
 
+export async function unlockMarketRun(id: string) {
+  const run = await prisma.groceryMarketRun.findUnique({ where: { id } });
+  if (!run) throw new Error("Ripoti haipatikani");
+  if (run.status !== "LOCKED") {
+    throw new Error("Soko halijafungwa — haliwezi kufunguliwa tena");
+  }
+
+  await prisma.groceryMarketRun.update({
+    where: { id },
+    data: { status: "OPEN", lockedAt: null },
+  });
+  return getMarketRunById(id);
+}
+
 export async function completeMarketRun(id: string) {
   await prisma.groceryMarketRun.update({
     where: { id },

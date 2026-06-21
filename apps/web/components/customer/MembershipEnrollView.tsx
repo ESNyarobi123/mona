@@ -7,6 +7,7 @@ import { apiGet, apiPost, getStoredUser } from "../../lib/admin-api";
 import { formatMoney } from "../../lib/format";
 import { unitLabel } from "@monana/utils";
 import { useAppLocale } from "../providers/AppLocaleProvider";
+import { GroceryDeliverySlotPicker } from "./GroceryDeliverySlotPicker";
 
 type Plan = {
   id: "WEEKLY" | "MONTHLY";
@@ -22,6 +23,7 @@ type Product = {
   name: string;
   price: string | number;
   unit: string;
+  inStock?: boolean;
   categoryId: string | null;
 };
 
@@ -171,6 +173,8 @@ export function MembershipEnrollView() {
   const stepIndex = activeSteps.indexOf(step as (typeof STEPS_PACKAGE)[number]);
 
   function setQty(productId: string, delta: number) {
+    const product = setup?.products.find((p) => p.id === productId);
+    if (delta > 0 && product?.inStock === false) return;
     setBasket((prev) => {
       const floor = minBasket[productId] ?? 0;
       const next = Math.max(floor, (prev[productId] ?? 0) + delta);
@@ -335,22 +339,22 @@ export function MembershipEnrollView() {
           {plan === "WEEKLY" ? (
             <>
               <p className="enroll-panel__hint">{t("enrollWeeklySlotHint")}</p>
-              <div className="enroll-day-grid">
-                {setup.deliveryDays.weekly.map((slot) => (
-                  <button
-                    key={slot.date}
-                    type="button"
-                    className={`enroll-day-btn ${selectedSlot === slot.date ? "enroll-day-btn--active" : ""}`}
-                    onClick={() => setSelectedSlot(slot.date)}
-                  >
-                    <span>{slot.label}</span>
-                    <small>{slot.weekLabel}</small>
-                  </button>
-                ))}
-              </div>
-              {setup.deliveryDays.weekly.length === 0 ? (
-                <p className="enroll-panel__hint">{t("noDeliverySlots")}</p>
-              ) : null}
+              <GroceryDeliverySlotPicker
+                slots={setup.deliveryDays.weekly.map((slot) => ({
+                  ...slot,
+                  deliveryAt: slot.deliveryAt ?? slot.date,
+                }))}
+                value={
+                  setup.deliveryDays.weekly.find((s) => s.date === selectedSlot)?.deliveryAt ??
+                  selectedSlot ??
+                  ""
+                }
+                onChange={(deliveryAt) => {
+                  const slot = setup.deliveryDays.weekly.find((s) => s.deliveryAt === deliveryAt);
+                  setSelectedSlot(slot?.date ?? deliveryAt);
+                }}
+                emptyLabel={t("noDeliverySlots")}
+              />
             </>
           ) : (
             <>
@@ -381,10 +385,15 @@ export function MembershipEnrollView() {
               const qty = basket[p.id] ?? 0;
               const minQty = minBasket[p.id] ?? 0;
               const canReduce = qty > minQty;
+              const outOfStock = p.inStock === false;
               return (
-                <li key={p.id} className={`enroll-product ${minQty > 0 ? "enroll-product--base" : ""}`}>
+                <li
+                  key={p.id}
+                  className={`enroll-product ${minQty > 0 ? "enroll-product--base" : ""}${outOfStock ? " enroll-product--oos" : ""}`}
+                >
                   <div>
                     <strong>{p.name}</strong>
+                    {outOfStock ? <small className="enroll-product__oos-tag">{t("outOfStock")}</small> : null}
                     {minQty > 0 ? <small className="enroll-product__base-tag">{t("packageBaseItem")}</small> : null}
                     <small>
                       {formatMoney(p.price)} / {unitLabel(p.unit, locale)}
@@ -400,7 +409,12 @@ export function MembershipEnrollView() {
                       −
                     </button>
                     <span>{qty}</span>
-                    <button type="button" onClick={() => setQty(p.id, 1)} aria-label={t("addQty")}>
+                    <button
+                      type="button"
+                      onClick={() => setQty(p.id, 1)}
+                      disabled={outOfStock}
+                      aria-label={t("addQty")}
+                    >
                       +
                     </button>
                   </div>

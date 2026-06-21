@@ -185,6 +185,7 @@ export const api = {
     module: BusinessModule;
     items: { productId?: string; menuItemId?: string; quantity: number }[];
     address?: string;
+    note?: string;
     mealSlot?: "BREAKFAST" | "LUNCH" | "DINNER";
     scheduledFor?: string;
     paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";

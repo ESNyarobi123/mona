@@ -3,8 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiGet, apiPost } from "../../lib/admin-api";
+import { apiGet, apiPost, isApiNotFoundError } from "../../lib/admin-api";
 import { formatMoney } from "../../lib/format";
+import {
+  canCustomerPayOrder,
+  isWaitingForDeliveryBeforePayment,
+} from "@monana/utils";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 
 type PaymentInfo = {
@@ -40,6 +44,8 @@ type OrderInfo = {
   module: "RESTAURANT" | "GROCERY";
   status: string;
   total: string | number;
+  paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
+  submittedAt?: string | null;
   payment?: { id: string; status: string; reference: string } | null;
 };
 
@@ -79,23 +85,43 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
+    setPayInfo(null);
     try {
       try {
         const o = await apiGet<OrderInfo>(`/api/orders/${orderId}`);
         setOrder(o);
         setCheckout(null);
 
-        if (o.payment?.status === "PAID" || o.payment?.status === "AWAITING_CONFIRMATION") {
-          setDone(true);
-          setLoading(false);
+        if (o.status === "CANCELLED") {
           return;
         }
 
-        const pay = await apiPost<PaymentInfo>(`/api/payments?locale=${locale}`, { orderId: o.id });
-        setPayInfo(pay);
+        if (o.payment?.status === "PAID" || o.payment?.status === "AWAITING_CONFIRMATION") {
+          setDone(true);
+          return;
+        }
+
+        if (isWaitingForDeliveryBeforePayment(o)) {
+          return;
+        }
+
+        if (!canCustomerPayOrder(o)) {
+          setError(t("paymentUnavailable"));
+          return;
+        }
+
+        try {
+          const pay = await apiPost<PaymentInfo>(`/api/payments?locale=${locale}`, { orderId: o.id });
+          setPayInfo(pay);
+        } catch (payErr) {
+          setError(payErr instanceof Error ? payErr.message : t("paymentUnavailable"));
+        }
         return;
-      } catch {
-        // not an order — try checkout intent
+      } catch (orderErr) {
+        if (!isApiNotFoundError(orderErr)) {
+          throw orderErr;
+        }
+        // order not found — try checkout intent below
       }
 
       const intent = await apiGet<CheckoutInfo>(`/api/checkout-intents/${orderId}`);
@@ -176,6 +202,8 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
   }
 
   const orderRef = orderId.slice(-6).toUpperCase();
+  const isCancelled = order?.status === "CANCELLED";
+  const payOnDeliveryTooEarly = !!order && isWaitingForDeliveryBeforePayment(order);
   const alreadySubmitted =
     done &&
     (isIntent ||
@@ -198,7 +226,17 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
         </div>
       </header>
 
-      {fullyPaid ? (
+      {isCancelled ? (
+        <div className="payment-done">
+          <span className="payment-done__icon" aria-hidden>
+            ❌
+          </span>
+          <h2>{t("cancelledNote")}</h2>
+          <Link href={cfg.ordersHref} className="landing-btn landing-btn--navy">
+            {t("viewYourOrders")}
+          </Link>
+        </div>
+      ) : fullyPaid ? (
         <div className="payment-done">
           <span className="payment-done__icon" aria-hidden>
             ✅
@@ -221,6 +259,17 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
           </p>
           <Link href={cfg.ordersHref} className="landing-btn landing-btn--navy">
             {t("viewYourOrders")}
+          </Link>
+        </div>
+      ) : payOnDeliveryTooEarly ? (
+        <div className="payment-done">
+          <span className="payment-done__icon" aria-hidden>
+            📦
+          </span>
+          <h2>{t("payOnDeliveryWaitTitle")}</h2>
+          <p>{t("payOnDeliveryWaitHint")}</p>
+          <Link href={`/account/orders/${orderId}`} className="landing-btn landing-btn--navy">
+            {t("trackOrderStatus")}
           </Link>
         </div>
       ) : payInfo ? (

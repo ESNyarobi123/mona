@@ -3,16 +3,24 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { apiGet, apiPost } from "../../lib/admin-api";
+import { apiGet } from "../../lib/admin-api";
 import { formatDate, formatMoney } from "../../lib/format";
 import { orderStatusLabel, SLOT_I18N, t as translate } from "../../lib/customer-i18n";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 import { buildOrderTimeline, isOrderActive } from "../../lib/order-timeline";
+import {
+  canCustomerPayOrder,
+  isPayOnDeliveryOrder,
+  isWaitingForDeliveryBeforePayment,
+  needsPayOnDeliveryApproval,
+} from "@monana/utils";
 
 type OrderDetail = {
   id: string;
   module: string;
   status: string;
+  subtotal?: string | number;
+  deliveryFee?: string | number;
   total: string | number;
   createdAt: string;
   updatedAt: string;
@@ -43,10 +51,6 @@ export function OrderDetailView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [paymentRef, setPaymentRef] = useState("");
-  const [payBusy, setPayBusy] = useState(false);
-  const [payError, setPayError] = useState("");
-  const [paySuccess, setPaySuccess] = useState("");
 
   const load = useCallback(async () => {
     if (!orderId) return;
@@ -89,41 +93,27 @@ export function OrderDetailView() {
     }
   }
 
-  async function submitPayOnDelivery(e: React.FormEvent) {
-    e.preventDefault();
-    if (!order) return;
-    setPayBusy(true);
-    setPayError("");
-    setPaySuccess("");
-    try {
-      await apiPost(`/api/orders/${order.id}/request-payment`, { reference: paymentRef.trim() });
-      setPaySuccess(t("paymentAwaitingAdmin"));
-      setPaymentRef("");
-      await load();
-    } catch (err) {
-      setPayError(err instanceof Error ? err.message : t("orderFailed"));
-    } finally {
-      setPayBusy(false);
-    }
-  }
-
   const timeline = order ? buildOrderTimeline(order.module, order.status, locale) : [];
-  const isPayOnDelivery = order?.paymentTiming === "PAY_ON_DELIVERY";
-  const canRequestPayOnDelivery =
+  const isPayOnDelivery = order ? isPayOnDeliveryOrder(order) : false;
+  const awaitingApproval = order ? needsPayOnDeliveryApproval(order) : false;
+  const showPayLink = order ? canCustomerPayOrder(order) : false;
+  const awaitingPaymentAdmin =
     isPayOnDelivery &&
-    !order?.submittedAt &&
-    order.status !== "CANCELLED" &&
-    ["ON_THE_WAY", "DELIVERED"].includes(order.status) &&
-    (!order.payment || ["PENDING", "FAILED"].includes(order.payment.status));
-  const needsPayNow =
-    order &&
-    !isPayOnDelivery &&
-    order.status !== "CANCELLED" &&
-    (!order.payment || order.payment.status === "PENDING");
-  const awaitingAdmin =
-    isPayOnDelivery &&
-    !order?.submittedAt &&
+    !!order?.submittedAt &&
     order?.payment?.status === "AWAITING_CONFIRMATION";
+
+  const orderSubtotal =
+    order != null
+      ? Number(
+          order.subtotal ??
+            order.items.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0)
+        )
+      : 0;
+  const orderDeliveryFee =
+    order != null
+      ? Number(order.deliveryFee ?? Math.max(0, Number(order.total) - orderSubtotal))
+      : 0;
+  const deliveryIsFree = orderDeliveryFee <= 0;
 
   return (
     <div className="order-detail-page">
@@ -161,8 +151,14 @@ export function OrderDetailView() {
         <p className="auth-form__error">{error}</p>
       ) : order ? (
         <>
-          {order.status === "CANCELLED" ? (
+          {order.status === "CANCELLED" && isPayOnDelivery && !order.submittedAt ? (
+            <p className="order-detail-page__cancelled">{t("orderRejectedPayLater")}</p>
+          ) : order.status === "CANCELLED" ? (
             <p className="order-detail-page__cancelled">{t("cancelledNote")}</p>
+          ) : null}
+
+          {awaitingApproval ? (
+            <p className="order-detail-page__notice">{t("orderAwaitingApproval")}</p>
           ) : null}
 
           <section className="order-detail-card">
@@ -208,10 +204,15 @@ export function OrderDetailView() {
             </section>
           ) : null}
 
-          {order.address ? (
+          {order.address || order.note ? (
             <section className="order-detail-card order-detail-card--compact">
               <h2>{t("orderAddress")}</h2>
-              <p>📍 {order.address}</p>
+              {order.address ? <p>📍 {order.address}</p> : null}
+              {order.note ? (
+                <p className="order-detail-card__extra">
+                  <strong>{t("orderExtraDetails")}:</strong> {order.note}
+                </p>
+              ) : null}
             </section>
           ) : null}
 
@@ -222,50 +223,47 @@ export function OrderDetailView() {
                 <li key={idx}>
                   <span>{item.name}</span>
                   <span>×{Number(item.quantity)}</span>
-                  <span>{formatMoney(item.price)}</span>
+                  <span>{formatMoney(Number(item.price) * Number(item.quantity))}</span>
                 </li>
               ))}
             </ul>
-            <div className="order-detail-card__total">
-              <strong>{formatMoney(order.total)}</strong>
+            <div className="order-detail-summary">
+              <div className="order-detail-summary__row">
+                <span>{t("subtotal")}</span>
+                <strong>{formatMoney(orderSubtotal)}</strong>
+              </div>
+              <div className="order-detail-summary__row">
+                <span>{t("deliveryFee")}</span>
+                <strong>{deliveryIsFree ? t("deliveryFree") : formatMoney(orderDeliveryFee)}</strong>
+              </div>
+              <div className="order-detail-summary__row order-detail-summary__row--total">
+                <span>{t("orderTotal")}</span>
+                <strong>{formatMoney(order.total)}</strong>
+              </div>
             </div>
           </section>
 
           <section className="order-detail-card order-detail-card--compact">
             <h2>{t("orderPayment")}</h2>
-            {isPayOnDelivery && !order.submittedAt ? (
+            {awaitingApproval ? (
               <p>{t("payOnDeliveryNote")}</p>
+            ) : isPayOnDelivery && order.submittedAt ? (
+              <p>
+                {isWaitingForDeliveryBeforePayment(order)
+                  ? t("payOnDeliveryWaitHint")
+                  : t("orderApprovedPayLater")}
+              </p>
             ) : null}
             <p>
               {order.payment
                 ? order.payment.status.replace(/_/g, " ")
                 : translate(locale, "statusPendingPay")}
             </p>
-            {awaitingAdmin ? <p>{t("paymentAwaitingAdmin")}</p> : null}
-            {needsPayNow ? (
+            {awaitingPaymentAdmin ? <p>{t("paymentAwaitingAdmin")}</p> : null}
+            {showPayLink ? (
               <Link href={`/pay/${order.id}`} className="landing-btn landing-btn--orange">
                 {t("payNow")}
               </Link>
-            ) : null}
-            {canRequestPayOnDelivery ? (
-              <form className="order-detail-pay-form" onSubmit={submitPayOnDelivery}>
-                <h3>{t("requestPaymentTitle")}</h3>
-                <p>{t("requestPaymentHint")}</p>
-                <label className="checkout-field">
-                  <span className="checkout-field__label">{t("paymentRefLabel")}</span>
-                  <input
-                    value={paymentRef}
-                    onChange={(e) => setPaymentRef(e.target.value)}
-                    placeholder={t("paymentRefPlaceholder")}
-                    required
-                  />
-                </label>
-                {payError ? <p className="auth-form__error">{payError}</p> : null}
-                {paySuccess ? <p className="auth-toast auth-toast--success">{paySuccess}</p> : null}
-                <button type="submit" className="landing-btn landing-btn--orange" disabled={payBusy}>
-                  {payBusy ? t("paymentSubmitting") : t("paymentSubmit")}
-                </button>
-              </form>
             ) : null}
           </section>
         </>

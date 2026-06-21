@@ -3043,6 +3043,27 @@
   font-size: 0.78rem !important;
 }
 
+.hot-rail-card--oos {
+  opacity: 0.9;
+}
+
+.hot-rail-card__oos {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #9a3412;
+  background: rgba(254, 243, 199, 0.95);
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+}
+
+.hot-rail-card__btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hot-rail-card {
     animation: none;
@@ -3112,7 +3133,28 @@
   right: 0.65rem;
   font-size: 0.7rem;
   font-weight: 700;
-  color: var(--mn-orange-dark);
+}
+
+.store-card__badge--oos {
+  color: #9a3412;
+  background: rgba(254, 243, 199, 0.95);
+  border: 1px solid rgba(180, 83, 9, 0.35);
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+}
+
+.store-card--oos {
+  opacity: 0.92;
+}
+
+.store-card--oos .store-card__media img,
+.store-card--oos .store-card__icon {
+  filter: grayscale(0.35);
+}
+
+.store-card--oos .store-card__btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
 }
 
 .store-card__kind {
@@ -5424,6 +5466,14 @@
   margin-bottom: 1rem;
 }
 
+.order-detail-page__notice {
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: rgba(255, 159, 28, 0.1);
+  color: #b45309;
+  margin-bottom: 1rem;
+}
+
 .order-detail-page__auto {
   margin: 0 0 0.75rem;
   font-size: 0.78rem;
@@ -5477,6 +5527,41 @@
   text-align: right;
   font-size: 1.15rem;
   color: var(--mn-navy);
+}
+
+.order-detail-summary {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--mn-border);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.order-detail-summary__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.9rem;
+  color: var(--mn-text-muted);
+}
+
+.order-detail-summary__row strong {
+  color: var(--mn-navy);
+  font-weight: 600;
+}
+
+.order-detail-summary__row--total {
+  margin-top: 0.25rem;
+  padding-top: 0.55rem;
+  border-top: 1px dashed var(--mn-border);
+  font-size: 1rem;
+  color: var(--mn-navy);
+}
+
+.order-detail-summary__row--total strong {
+  font-size: 1.15rem;
+  font-weight: 700;
 }
 
 .order-timeline {
@@ -5671,6 +5756,77 @@
   font-weight: 700;
 }
 
+.delivery-slot-picker {
+  display: grid;
+  gap: 1rem;
+}
+
+.delivery-slot-picker__week {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.delivery-slot-picker__week-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(15, 23, 42, 0.55);
+}
+
+.delivery-slot-picker__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: 0.55rem;
+}
+
+.delivery-slot-picker__btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 3.1rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 12px;
+  border: 1px solid var(--mn-border);
+  background: var(--mn-bg-white);
+  cursor: pointer;
+  font-family: inherit;
+  text-align: center;
+  transition: border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
+}
+
+.delivery-slot-picker__btn:hover {
+  border-color: rgba(255, 107, 44, 0.45);
+}
+
+.delivery-slot-picker__btn--active {
+  border-color: var(--mn-orange);
+  background: rgba(255, 107, 44, 0.1);
+  box-shadow: 0 0 0 1px rgba(255, 107, 44, 0.18);
+}
+
+.delivery-slot-picker__day {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--mn-navy);
+  line-height: 1.25;
+}
+
+.delivery-slot-picker__btn--active .delivery-slot-picker__day {
+  color: var(--mn-orange-dark);
+}
+
+.delivery-slot-picker__empty {
+  margin: 0;
+  font-size: 0.88rem;
+  color: rgba(15, 23, 42, 0.62);
+}
+
+.checkout-delivery-picker {
+  margin-bottom: 1rem;
+}
+
 .checkout-payment-timing {
   display: grid;
   gap: 0.65rem;
@@ -5694,6 +5850,31 @@
 
 .checkout-payment-timing__option input {
   margin-top: 0.2rem;
+}
+
+.checkout-payment-timing__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.checkout-payment-timing__label {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.checkout-payment-timing__badge {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(34, 197, 94, 0.14);
+  color: #15803d;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .enroll-products {

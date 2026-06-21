@@ -17,6 +17,7 @@ type Product = {
   imageUrl?: string | null;
   price: string | number;
   unit: string;
+  inStock?: boolean;
   categoryId: string | null;
   category?: { id: string; name: string } | null;
 };
@@ -45,6 +46,7 @@ type HotItem = {
   badge?: string | null;
   imageUrl?: string | null;
   productId?: string;
+  inStock?: boolean;
 };
 
 export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab }) {
@@ -97,7 +99,7 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
       setError("");
       try {
         if (tab === "products") {
-          const q = categoryId ? `?categoryId=${categoryId}` : "";
+          const q = categoryId ? `?categoryId=${categoryId}&locale=${locale}` : `?locale=${locale}`;
           const data = await apiGet<{ products: Product[]; categories: Category[] }>(
             `/api/grocery/store/on-demand${q}`
           );
@@ -120,9 +122,10 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
     return () => {
       cancelled = true;
     };
-  }, [tab, categoryId]);
+  }, [tab, categoryId, locale]);
 
   function handleAdd(p: Product) {
+    if (p.inStock === false) return;
     addToCart({
       module: "GROCERY",
       productId: p.id,
@@ -224,11 +227,11 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
               onAdd={(productId) => {
                 const p = products.find((x) => x.id === productId);
                 if (p) {
-                  handleAdd(p);
+                  if (p.inStock !== false) handleAdd(p);
                   return;
                 }
                 const pick = hot.find((h) => (h.productId ?? h.id) === productId);
-                if (pick) {
+                if (pick && pick.inStock !== false) {
                   handleAdd({
                     id: productId,
                     name: pick.name,
@@ -236,6 +239,7 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
                     price: pick.price,
                     unit: pick.unit,
                     categoryId: null,
+                    inStock: pick.inStock,
                   });
                 }
               }}
@@ -249,8 +253,13 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
             </div>
           ) : (
             <div className="store-grid">
-              {products.map((p) => (
-                <article key={p.id} className="store-card">
+              {products.map((p) => {
+                const outOfStock = p.inStock === false;
+                return (
+                <article key={p.id} className={`store-card${outOfStock ? " store-card--oos" : ""}`}>
+                  {outOfStock ? (
+                    <span className="store-card__badge store-card__badge--oos">{t("outOfStock")}</span>
+                  ) : null}
                   {p.imageUrl ? (
                     <div className="store-card__media">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -272,11 +281,14 @@ export function GroceryShopView({ initialTab = "products" }: { initialTab?: Tab 
                     type="button"
                     className="landing-btn landing-btn--orange store-card__btn"
                     onClick={() => handleAdd(p)}
+                    disabled={outOfStock}
+                    aria-disabled={outOfStock}
                   >
-                    {added === p.id ? t("addedToCart") : t("addToCart")}
+                    {outOfStock ? t("outOfStock") : added === p.id ? t("addedToCart") : t("addToCart")}
                   </button>
                 </article>
-              ))}
+              );
+              })}
             </div>
           )}
         </>

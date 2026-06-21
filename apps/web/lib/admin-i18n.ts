@@ -158,6 +158,8 @@ export const ADMIN_MESSAGES = {
   itemsInOrder: { en: "Items in this order", sw: "Vitu kwenye oda hii" },
   orderItemCount: { en: "{n} items", sw: "Vitu {n}" },
   noAddress: { en: "No delivery address", sw: "Hakuna anwani ya utoaji" },
+  deliveryExtraDetails: { en: "Extra delivery details", sw: "Maelezo ya ziada ya utoaji" },
+  noExtraDetails: { en: "No extra details", sw: "Hakuna maelezo ya ziada" },
   paymentStatus: { en: "Payment", sw: "Malipo" },
   noPayment: { en: "No payment record", sw: "Hakuna rekodi ya malipo" },
   closeDetails: { en: "Close", sw: "Funga" },
@@ -197,6 +199,19 @@ export const ADMIN_MESSAGES = {
     en: "Pay on delivery — approve to submit order",
     sw: "Lipa ukifika — kubali ili oda iwasilishwe",
   },
+  payLaterRequestAwaiting: {
+    en: "Pay-on-delivery request — approve to submit order",
+    sw: "Ombi la kulipia ukifika — kubali ili oda iwasilishwe",
+  },
+  approvePayLaterRequestPrompt: {
+    en: "Approve this pay-on-delivery request and submit the order?",
+    sw: "Kubali ombi la kulipia ukifika na kuwasilisha oda?",
+  },
+  rejectPayLaterRequestPrompt: {
+    en: "Reject this request? The order will be cancelled.",
+    sw: "Kataa ombi hili? Oda itafutwa.",
+  },
+  payLaterRequestsCount: { en: "{n} awaiting approval", sw: "{n} zinasubiri idhini" },
   totalAmount: { en: "Total amount", sw: "Jumla ya kiasi" },
   awaitingCount: { en: "{n} awaiting", sw: "{n} yanasubiri" },
   paidCount: { en: "{n} paid", sw: "{n} yamelipwa" },
@@ -334,9 +349,17 @@ export const ADMIN_MESSAGES = {
   menuBoardName: { en: "Menu name…", sw: "Jina la menyu…" },
   menuBoardDesc: { en: "Description (optional)", sw: "Maelezo (si lazima)" },
   noMenusYet: { en: "No menus yet", sw: "Hakuna menyu bado" },
+  hideMenuBoardConfirm: {
+    en: 'Hide "{name}"? Items stay linked but menu won\'t show while inactive.',
+    sw: 'Ficha "{name}"? Vitu bado vimeunganishwa lakini menyu haitaonekana ikiwa imezimwa.',
+  },
   deleteMenuBoardConfirm: {
-    en: 'Deactivate "{name}"? Items stay linked but menu won\'t show if inactive.',
-    sw: 'Zima "{name}"? Vitu bado vimeunganishwa lakini menyu haitaonekana ikiwa imezimwa.',
+    en: 'Permanently delete "{name}"? This cannot be undone.',
+    sw: 'Futa "{name}" kabisa? Haiwezi rudishwa.',
+  },
+  deleteMenuBoardWithItemsConfirm: {
+    en: 'Permanently delete "{name}" and its {n} item(s)? Past orders keep item names.',
+    sw: 'Futa "{name}" na vitu vyake {n} kabisa? Oda za zamani zitabaki na majina ya vyakula.',
   },
   hotProductsDesc: {
     en: "Show trending dishes on the customer menu — automatic from orders or manual picks.",
@@ -489,6 +512,10 @@ export const ADMIN_MESSAGES = {
     sw: "Simamia jinsi bidhaa zinavyouzwa — kilo, kipande, lita, au kipimo chako.",
   },
   addUnit: { en: "Add unit", sw: "Ongeza kipimo" },
+  unitFillLabels: {
+    en: "Enter both English and Swahili labels.",
+    sw: "Jaza jina la Kiingereza na Kiswahili.",
+  },
   newUnit: { en: "New unit", sw: "Kipimo kipya" },
   editUnit: { en: "Edit unit", sw: "Hariri kipimo" },
   allUnits: { en: "All units", sw: "Vipimo vyote" },
@@ -499,8 +526,16 @@ export const ADMIN_MESSAGES = {
   unitLabelSw: { en: "Swahili label", sw: "Jina (Kiswahili)" },
   unitCode: { en: "Code", sw: "Msimbo" },
   unitCodeHint: {
-    en: "Auto-generated from English label if left blank (e.g. DOZEN)",
-    sw: "Inatengenezwa kutoka jina la Kiingereza (mf. DOZEN)",
+    en: "Optional — auto-generated from English label if left blank",
+    sw: "Si lazima — inatengenezwa kutoka jina la Kiingereza ukiiacha wazi",
+  },
+  unitCodeAutoHint: {
+    en: "Will be saved as {code} (base code already in use)",
+    sw: "Itahifadhiwa kama {code} (msimbo wa msingi tayari unatumika)",
+  },
+  unitCodeTaken: {
+    en: "Code {code} is already in use. Try {suggested} or leave the code blank.",
+    sw: "Msimbo {code} tayari unatumika. Tumia {suggested} au acha msimbo wazi.",
   },
   unitPriceSuffix: { en: "Price suffix", sw: "Kiambishi cha bei" },
   unitPriceSuffixHint: {
@@ -545,6 +580,14 @@ export const ADMIN_MESSAGES = {
   noProductsYet: { en: "No products yet", sw: "Hakuna bidhaa bado" },
   noProductsMatch: { en: "No products match filters", sw: "Hakuna bidhaa inayolingana na vichujio" },
   availableInStore: { en: "Available in store", sw: "Inapatikana dukani" },
+  outOfStock: { en: "Out of stock", sw: "Imeisha stoo" },
+  inStock: { en: "In stock", sw: "Ipo stoo" },
+  markOutOfStock: { en: "Mark out of stock", sw: "Weka imeisha" },
+  restock: { en: "Restock", sw: "Rudisha stoo" },
+  productVisibility: { en: "Visibility", sw: "Kuonekana" },
+  productStock: { en: "Stock", sw: "Stoo" },
+  filterStockAria: { en: "Filter by stock", sw: "Chuja kwa stoo" },
+  allStock: { en: "All stock", sw: "Stoo zote" },
   deleteProductConfirm: {
     en: 'Permanently delete "{name}"? This cannot be undone. Past orders keep the item name.',
     sw: 'Futa "{name}" kabisa? Haiwezi rudishwa. Oda za zamani zitabaki na jina la bidhaa.',
@@ -889,8 +932,8 @@ export const ADMIN_MESSAGES = {
     sw: "Ripoti zimehifadhiwa. Sasisha ikiwa kuna oda mpya baada ya kuhifadhi.",
   },
   reportsStatusSavedLocked: {
-    en: "Market closed for this day — reports are locked.",
-    sw: "Soko limefungwa kwa siku hii — ripoti zimefungwa.",
+    en: "Market closed for this day — reports are locked. Use Reopen market if this was a mistake.",
+    sw: "Soko limefungwa kwa siku hii — ripoti zimefungwa. Tumia Fungua soko tena ikiwa ilifungwa kwa bahati mbaya.",
   },
   reportsStatusSavedDone: {
     en: "This delivery day is marked complete.",
@@ -899,6 +942,11 @@ export const ADMIN_MESSAGES = {
   reportsSaveFor: { en: "Save reports for {date}", sw: "Hifadhi ripoti za {date}" },
   reportsUpdateBtn: { en: "Update reports", sw: "Sasisha ripoti" },
   reportsLockNow: { en: "Close market", sw: "Funga soko" },
+  reportsUnlockNow: { en: "Reopen market", sw: "Fungua soko tena" },
+  reportsUnlockConfirm: {
+    en: "Reopen market for this day? You can update reports and accept new orders again.",
+    sw: "Fungua soko tena kwa siku hii? Utaweza kusasisha ripoti na kupokea oda mpya.",
+  },
   reportsLockOnSaveHint: {
     en: "Also close market (stop new orders)",
     sw: "Pia funga soko (hakuna oda mpya)",

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { apiGet, apiPatch, normalizeApiList } from "../../../../lib/admin-api";
+import { apiGet, apiPatch, apiPost, normalizeApiList } from "../../../../lib/admin-api";
 import { formatMoney } from "../../../../lib/format";
 import { orderRef, userInitials } from "../../../../lib/admin-dashboard";
 import { orderStatusLabel } from "../../../../lib/customer-i18n";
@@ -15,6 +15,7 @@ import { AdminUserCell } from "../../../../components/admin/dashboard/AdminUserC
 import { AdminOrderTimeline } from "../../../../components/admin/dashboard/AdminOrderTimeline";
 import { AdminLoading } from "../../../../components/admin/dashboard/AdminLoading";
 import { useAdminLocale } from "../../../../components/admin/AdminLocaleProvider";
+import { needsPayOnDeliveryApproval, orderFulfillmentBlockedReason } from "@monana/utils";
 
 type OrderItem = {
   name: string;
@@ -29,8 +30,11 @@ type Order = {
   status: string;
   total: string | number;
   address: string | null;
+  note: string | null;
   mealSlot: string | null;
   createdAt: string;
+  paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
+  submittedAt?: string | null;
   user: { name: string | null; phone: string };
   items: OrderItem[];
   payment?: { status: string; reference: string | null } | null;
@@ -79,6 +83,8 @@ type OrderGridProps = {
   onSelect: (order: Order) => void;
   onAdvance: (id: string, status: string) => void;
   onCancel: (id: string) => void;
+  onApproveRequest: (id: string) => void;
+  onRejectRequest: (id: string) => void;
 };
 
 function OrderGrid({
@@ -91,12 +97,16 @@ function OrderGrid({
   onSelect,
   onAdvance,
   onCancel,
+  onApproveRequest,
+  onRejectRequest,
 }: OrderGridProps) {
   return (
     <ul className="admin-order-grid">
       {items.map((o) => {
         const next = NEXT_STATUS[o.status];
         const busy = busyId === o.id;
+        const needsApproval = needsPayOnDeliveryApproval(o);
+        const advanceBlocked = !needsApproval && next ? orderFulfillmentBlockedReason(o, locale) : null;
         const previewItems = o.items.slice(0, 3);
         const extraCount = Math.max(0, o.items.length - previewItems.length);
 
@@ -130,6 +140,7 @@ function OrderGrid({
                 <strong>{o.user.name?.trim() || o.user.phone}</strong>
                 <small>{o.user.phone}</small>
                 {o.address ? <small className="admin-order-card__address">{o.address}</small> : null}
+                {o.note ? <small className="admin-order-card__note">{o.note}</small> : null}
               </div>
             </div>
 
@@ -153,6 +164,18 @@ function OrderGrid({
 
             <AdminOrderTimeline status={o.status} locale={locale} compact />
 
+            {needsApproval ? (
+              <div className="admin-payment-card__alert">
+                <span aria-hidden>⏳</span>
+                {t("payLaterRequestAwaiting")}
+              </div>
+            ) : advanceBlocked ? (
+              <div className="admin-payment-card__alert">
+                <span aria-hidden>💳</span>
+                {advanceBlocked}
+              </div>
+            ) : null}
+
             <footer className="admin-order-card__foot">
               <div className="admin-order-card__total-wrap">
                 <span className="admin-order-card__total-label">{t("total")}</span>
@@ -162,11 +185,31 @@ function OrderGrid({
                 <button type="button" className="admin-btn secondary sm" onClick={() => onSelect(o)}>
                   {t("viewOrderDetails")}
                 </button>
-                {next ? (
+                {needsApproval ? (
+                  <>
+                    <button
+                      type="button"
+                      className="admin-btn sm"
+                      disabled={busy}
+                      onClick={() => onApproveRequest(o.id)}
+                    >
+                      {t("confirm")}
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-btn sm danger"
+                      disabled={busy}
+                      onClick={() => onRejectRequest(o.id)}
+                    >
+                      {t("reject")}
+                    </button>
+                  </>
+                ) : next ? (
                   <button
                     type="button"
                     className="admin-btn sm"
-                    disabled={busy}
+                    disabled={busy || !!advanceBlocked}
+                    title={advanceBlocked ?? undefined}
                     onClick={() => onAdvance(o.id, o.status)}
                   >
                     {tf("advanceTo", { status: orderStatusLabel(locale, next) })}
@@ -224,11 +267,12 @@ export default function AdminOrdersPage() {
 
   const stats = useMemo(() => {
     const pending = orders.filter((o) => PENDING_STATUSES.has(o.status)).length;
+    const payLaterPending = orders.filter((o) => needsPayOnDeliveryApproval(o)).length;
     const restaurant = orders.filter((o) => o.module === "RESTAURANT").length;
     const grocery = orders.filter((o) => o.module === "GROCERY").length;
     const value = orders.reduce((sum, o) => sum + Number(o.total), 0);
     const delivered = orders.filter((o) => o.status === "DELIVERED").length;
-    return { pending, restaurant, grocery, value, delivered };
+    return { pending, payLaterPending, restaurant, grocery, value, delivered };
   }, [orders]);
 
   const restaurantOrders = useMemo(
@@ -270,6 +314,34 @@ export default function AdminOrdersPage() {
     }
   }
 
+  async function approveRequest(id: string) {
+    if (!confirm(t("approvePayLaterRequestPrompt"))) return;
+    setBusyId(id);
+    try {
+      const updated = await apiPost<Order>(`/api/orders/${id}/approve-request`, {});
+      load();
+      if (selected?.id === id) setSelected(updated);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t("error"));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function rejectRequest(id: string) {
+    if (!confirm(t("rejectPayLaterRequestPrompt"))) return;
+    setBusyId(id);
+    try {
+      const updated = await apiPost<Order>(`/api/orders/${id}/reject-request`, {});
+      load();
+      if (selected?.id === id) setSelected(updated);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t("error"));
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function statusLabel(status: string) {
     if (!status) return t("allStatuses");
     return orderStatusLabel(locale, status);
@@ -296,7 +368,11 @@ export default function AdminOrdersPage() {
         <AdminKpiCard
           label={t("pendingShort")}
           value={stats.pending}
-          trend={t("needsAction")}
+          trend={
+            stats.payLaterPending
+              ? tf("payLaterRequestsCount", { n: stats.payLaterPending })
+              : t("needsAction")
+          }
           tone="warning"
           trendUp={false}
         />
@@ -380,6 +456,8 @@ export default function AdminOrdersPage() {
                 onSelect={setSelected}
                 onAdvance={advance}
                 onCancel={cancel}
+                onApproveRequest={approveRequest}
+                onRejectRequest={rejectRequest}
               />
             )}
           </AdminPanel>
@@ -405,6 +483,8 @@ export default function AdminOrdersPage() {
                 onSelect={setSelected}
                 onAdvance={advance}
                 onCancel={cancel}
+                onApproveRequest={approveRequest}
+                onRejectRequest={rejectRequest}
               />
             )}
           </AdminPanel>
@@ -453,6 +533,13 @@ export default function AdminOrdersPage() {
               </section>
 
               <section className="admin-order-detail__section">
+                <h3 className="admin-form-section__title">{t("deliveryAddress")}</h3>
+                <p className="admin-order-detail__text">{selected.address ?? t("noAddress")}</p>
+                <h3 className="admin-form-section__title">{t("deliveryExtraDetails")}</h3>
+                <p className="admin-order-detail__text">{selected.note ?? t("noExtraDetails")}</p>
+              </section>
+
+              <section className="admin-order-detail__section">
                 <h3 className="admin-form-section__title">{t("progress")}</h3>
                 <AdminOrderTimeline status={selected.status} locale={locale} />
               </section>
@@ -493,17 +580,49 @@ export default function AdminOrdersPage() {
                 </section>
               ) : null}
 
+              {!needsPayOnDeliveryApproval(selected) &&
+              NEXT_STATUS[selected.status] &&
+              orderFulfillmentBlockedReason(selected, locale) ? (
+                <div className="admin-payment-card__alert">
+                  <span aria-hidden>💳</span>
+                  {orderFulfillmentBlockedReason(selected, locale)}
+                </div>
+              ) : null}
+
               <footer className="admin-order-detail__foot">
                 <div className="admin-order-detail__total">
                   <span>{t("total")}</span>
                   <strong>{formatMoney(selected.total)}</strong>
                 </div>
                 <div className="admin-order-detail__actions">
-                  {NEXT_STATUS[selected.status] ? (
+                  {needsPayOnDeliveryApproval(selected) ? (
+                    <>
+                      <button
+                        type="button"
+                        className="admin-btn"
+                        disabled={busyId === selected.id}
+                        onClick={() => approveRequest(selected.id)}
+                      >
+                        {t("confirm")}
+                      </button>
+                      <button
+                        type="button"
+                        className="admin-btn danger"
+                        disabled={busyId === selected.id}
+                        onClick={() => rejectRequest(selected.id)}
+                      >
+                        {t("reject")}
+                      </button>
+                    </>
+                  ) : NEXT_STATUS[selected.status] ? (
                     <button
                       type="button"
                       className="admin-btn"
-                      disabled={busyId === selected.id}
+                      disabled={
+                        busyId === selected.id ||
+                        !!orderFulfillmentBlockedReason(selected, locale)
+                      }
+                      title={orderFulfillmentBlockedReason(selected, locale) ?? undefined}
                       onClick={() => advance(selected.id, selected.status)}
                     >
                       {tf("advanceTo", {

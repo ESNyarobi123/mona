@@ -12,10 +12,12 @@ export type State =
   | "CHOOSING_MEMBERSHIP_DAY"
   | "ASK_GROCERY_DELIVERY"
   | "ASK_ADDRESS"
+  | "ASK_EXTRA_DETAILS"
   | "ASK_PAYMENT_TIMING"
   | "ASK_SUB_ADDRESS"
   | "CHOOSING_PAY_ORDER"
   | "AWAIT_PAYMENT"
+  | "ASK_PAYMENT_REFERENCE"
   | "CHOOSING_RESTAURANT_HUB"
   | "CHOOSING_RESTAURANT_MEMBERSHIP_SLOTS"
   | "ASK_RESTAURANT_MEMBERSHIP_ADDRESS"
@@ -49,7 +51,7 @@ export type SessionData = {
   userId?: string;
   module?: BusinessModule;
   mealSlot?: "BREAKFAST" | "LUNCH" | "DINNER";
-  groceryProducts?: { id: string; name: string; price: string; unit?: string }[];
+  groceryProducts?: { id: string; name: string; price: string; unit?: string; inStock?: boolean }[];
   menuItems?: { id: string; name: string; price: string; unit?: string }[];
   cart: CartLine[];
   membershipPlan?: "WEEKLY" | "MONTHLY";
@@ -59,6 +61,7 @@ export type SessionData = {
   scheduledDeliveryDate?: string;
   scheduledFor?: string;
   address?: string;
+  note?: string;
   deliverySlots?: { date: string; dayOfWeek: number; label: string; deliveryAt: string; weekLabel: string }[];
   activeSubscriptionId?: string;
   orderId?: string;

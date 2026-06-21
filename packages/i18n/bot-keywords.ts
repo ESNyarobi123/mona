@@ -52,17 +52,45 @@ const PAYMENT_PREFIXES = [
 ];
 
 /**
- * Detects a "I have paid" message. Returns the trailing reference if the user
- * typed one (e.g. "nimelipa QFG7H2K9"), otherwise "MANUAL" so a bare
- * "nimelipa" still works for beginners.
+ * Detects "I have paid" with a trailing reference (e.g. "nimelipa QFG7H2K9").
+ * Bare "nimelipa" / "paid" alone returns null — bot will ask for the M-Pesa code.
  */
 export function extractPaymentReference(text: string, _locale: AppLocale): string | null {
   const lower = text.toLowerCase().trim();
   for (const p of PAYMENT_PREFIXES) {
-    if (lower === p || lower.startsWith(`${p} `)) {
-      return text.slice(text.toLowerCase().indexOf(p) + p.length).trim() || "MANUAL";
+    if (lower.startsWith(`${p} `)) {
+      const ref = text.slice(text.toLowerCase().indexOf(p) + p.length).trim();
+      return ref || null;
     }
   }
+  return null;
+}
+
+/** Customer said they paid but did not include a reference code yet. */
+export function isPaidWithoutReference(text: string): boolean {
+  const lower = text.toLowerCase().trim();
+  for (const p of PAYMENT_PREFIXES) {
+    if (lower === p) return true;
+  }
+  return BOT_KEYWORDS.paid.some((k) => lower === k);
+}
+
+/**
+ * Parse an M-Pesa / Lipa Namba proof reference from WhatsApp text.
+ * Accepts "nimelipa CODE", a pasted code, or a short alphanumeric token.
+ */
+export function parseCustomerPaymentReference(text: string, locale: AppLocale = "sw"): string | null {
+  const fromPrefix = extractPaymentReference(text, locale);
+  if (fromPrefix) return fromPrefix;
+
+  const mpesa = extractMpesaCode(text);
+  if (mpesa) return mpesa;
+
+  const trimmed = text.trim().replace(/\s+/g, "");
+  if (/^[A-Za-z0-9.\-]{6,20}$/.test(trimmed) && /[0-9]/.test(trimmed)) {
+    return trimmed.toUpperCase();
+  }
+
   return null;
 }
 

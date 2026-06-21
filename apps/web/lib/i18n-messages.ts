@@ -118,6 +118,7 @@ export const UI_MESSAGES = {
   goTo: { en: "Go to", sw: "Nenda kwenye" },
   all: { en: "All", sw: "Zote" },
   filterAll: { en: "All", sw: "Zote" },
+  outOfStock: { en: "Out of stock", sw: "Imeisha stoo" },
   addToCart: { en: "Add to cart", sw: "Ongeza cart" },
   addedToCart: { en: "✓ Added", sw: "✓ Imeongezwa" },
   checkout: { en: "Checkout", sw: "Checkout" },
@@ -224,6 +225,7 @@ export const UI_MESSAGES = {
   orderTimeline: { en: "Delivery progress", sw: "Hatua za utoaji" },
   orderItems: { en: "Items", sw: "Bidhaa" },
   orderAddress: { en: "Delivery address", sw: "Anwani ya utoaji" },
+  orderExtraDetails: { en: "Extra details", sw: "Maelezo ya ziada" },
   orderPayment: { en: "Payment", sw: "Malipo" },
   orderSlot: { en: "Meal window", sw: "Dirisha la chakula" },
   backDashboard: { en: "Back to dashboard", sw: "Rudi dashibodi" },
@@ -243,6 +245,10 @@ export const UI_MESSAGES = {
   noDeliverySlots: {
     en: "No delivery slots available right now. Try again later.",
     sw: "Hakuna siku za utoaji kwa sasa. Jaribu tena baadaye.",
+  },
+  cartHasOutOfStock: {
+    en: "Remove out-of-stock items from your cart before checkout.",
+    sw: "Ondoa bidhaa zilizoisha stoo kwenye cart kabla ya kuendelea.",
   },
   checkoutDeliveryDay: { en: "Delivery day", sw: "Siku ya kupokea mzigo" },
   checkoutDeliveryHint: {
@@ -410,6 +416,10 @@ export const UI_MESSAGES = {
   orderSummary: { en: "Order summary", sw: "Muhtasari wa oda" },
   deliveryAddress: { en: "Delivery address", sw: "Anwani ya kufikishia" },
   addressRequired: { en: "Delivery address is required.", sw: "Anwani ya kufikishia ni lazima." },
+  extraDetailsRequired: {
+    en: "Extra delivery details are required (gate, house color, door name…).",
+    sw: "Maelezo ya ziada ni lazima (mlango, rangi ya nyumba, jina la mlango…).",
+  },
   cartEmptyModule: { en: "Cart is empty for this section.", sw: "Cart ni tupu kwa sehemu hii." },
   cartEmptyGoShop: { en: "No items in cart for", sw: "Hakuna vitu kwenye cart kwa" },
   addItemsFirst: { en: "Add items first.", sw: "Ongeza bidhaa kwanza." },
@@ -443,20 +453,48 @@ export const UI_MESSAGES = {
     en: "Pay now (Lipa Namba before delivery)",
     sw: "Lipa sasa (Lipa Namba kabla ya mzigo)",
   },
+  paymentTimingNowRecommended: { en: "Recommended", sw: "Inapendekezwa" },
   paymentTimingLater: {
-    en: "Pay on delivery (pay after you receive your order)",
-    sw: "Lipa ukifika (malipo baada ya kupokea mzigo)",
+    en: "Pay on delivery (admin approval required)",
+    sw: "Lipa ukifika (inahitaji idhini ya admin)",
   },
   payOnDeliveryNote: {
-    en: "You chose pay on delivery. Pay after you receive your order, then submit your payment reference.",
-    sw: "Umechagua kulipia ukifika. Lipa baada ya kupokea mzigo, kisha tuma reference ya malipo.",
+    en: "Your request goes to admin first. Your order is only submitted after approval. You pay when you receive your delivery.",
+    sw: "Ombi lako litaenda kwa admin kwanza. Oda yako itawasilishwa tu baada ya kuidhinishwa. Utalipa ukifika mzigo.",
   },
+  checkoutPayLaterRequestSent: {
+    en: "Request sent! We will notify you when admin approves your order.",
+    sw: "Ombi limetumwa! Tutakujulisha admin akikubali oda yako.",
+  },
+  sendPayLaterRequest: { en: "Send request to admin", sw: "Tuma ombi kwa admin" },
+  orderAwaitingApproval: {
+    en: "Awaiting admin approval",
+    sw: "Inasubiri idhini ya admin",
+  },
+  orderApprovedPayLater: {
+    en: "Approved — your order is being prepared. Pay when you receive your delivery.",
+    sw: "Imekubaliwa — oda yako inaandaliwa. Utalipa ukifika mzigo.",
+  },
+  orderRejectedPayLater: {
+    en: "Your pay-on-delivery request was not approved.",
+    sw: "Ombi lako la kulipia ukifika halikukubaliwa.",
+  },
+  payOnDeliveryWaitTitle: {
+    en: "Pay when your order arrives",
+    sw: "Lipa ukifika mzigo",
+  },
+  payOnDeliveryWaitHint: {
+    en: "You chose pay on delivery. You can pay once your order is on the way or delivered.",
+    sw: "Umechagua kulipia baadae. Utaweza kulipa oda inapokuwa njiani au imefika.",
+  },
+  trackOrderStatus: { en: "Track order status", sw: "Fuatilia hali ya oda" },
+  paymentOnDelivery: { en: "Pay on delivery", sw: "Lipa ukifika mzigo" },
   requestPaymentTitle: { en: "Request payment approval", sw: "Omba uthibitisho wa malipo" },
   requestPaymentHint: {
     en: "Submit your M-Pesa / Lipa Namba reference after paying. Admin will approve your order.",
     sw: "Tuma reference ya M-Pesa / Lipa Namba baada ya kulipa. Admin ataidhinisha oda yako.",
   },
-  orderNotSubmitted: { en: "Awaiting payment approval", sw: "Inasubiri uthibitisho wa malipo" },
+  orderNotSubmitted: { en: "Awaiting admin approval", sw: "Inasubiri idhini ya admin" },
   paymentAwaitingAdmin: {
     en: "Payment submitted — waiting for admin approval",
     sw: "Malipo yametumwa — inasubiri uthibitisho wa admin",

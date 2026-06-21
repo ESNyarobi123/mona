@@ -213,13 +213,13 @@ export async function getMembershipSetup(locale: AppLocale = "en") {
 }
 
 /** Orodha ya bidhaa kwa oda ya papo kwa papo */
-export async function getOnDemandCatalog(categoryId?: string) {
+export async function getOnDemandCatalog(categoryId?: string, locale: AppLocale = "en") {
   const { products, categories } = await fetchGroceryCatalog(categoryId);
   return {
     orderType: "ON_DEMAND" as const,
     products,
     categories,
-    deliverySlots: getUpcomingGroceryDeliverySlots({ cutoffHours: 48 }),
+    deliverySlots: getUpcomingGroceryDeliverySlots({ cutoffHours: 48, locale }),
     createOrder: {
       method: "POST",
       path: "/api/orders",

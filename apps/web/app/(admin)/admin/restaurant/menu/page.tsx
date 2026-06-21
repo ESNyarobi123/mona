@@ -176,6 +176,8 @@ export default function RestaurantMenuPage() {
     });
   }, [data, search, filterMenu, filterCategory, filterSlot, filterAvailable, categories]);
 
+  const editingItem = editingId ? data?.items.find((item) => item.id === editingId) ?? null : null;
+
   function openCreate() {
     if (!data?.menus.length) {
       alert(t("noMenusYet"));
@@ -213,6 +215,7 @@ export default function RestaurantMenuPage() {
     if (!confirm(tf("removeFromMenuConfirm", { name: item.name }))) return;
     try {
       await apiDelete(`/api/restaurant/menu/items/${item.id}`);
+      if (editingId === item.id) closeModal();
       load();
     } catch (e) {
       alert(e instanceof Error ? e.message : t("error"));
@@ -647,6 +650,16 @@ export default function RestaurantMenuPage() {
                 <button type="button" className="admin-btn secondary" onClick={closeModal}>
                   {t("close")}
                 </button>
+                {modalMode === "edit" && editingItem ? (
+                  <button
+                    type="button"
+                    className="admin-btn danger admin-crud-form__actions-delete"
+                    onClick={() => removeItem(editingItem)}
+                    disabled={saving}
+                  >
+                    {t("delete")}
+                  </button>
+                ) : null}
               </div>
               </div>
             </form>
