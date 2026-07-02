@@ -6,6 +6,6 @@ import { handle, ok } from "../../../../lib/api";
 export function GET(req: Request) {
   return handle(async () => {
     const locale = parseLocale(new URL(req.url).searchParams.get("locale"));
-    return ok(getMealSlotsPayload(locale === "sw" ? "sw" : "en"));
+    return ok(await getMealSlotsPayload(locale === "sw" ? "sw" : "en"));
   });
 }
