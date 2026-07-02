@@ -173,6 +173,18 @@ export const UI_MESSAGES = {
     sw: "Chagua Asubuhi, Mchana, na/au Usiku — upokee ukumbusho wa WhatsApp dirisha likifunguka.",
   },
   restaurantMembershipActive: { en: "Your meal reminders", sw: "Ukumbusho wa muda wa chakula" },
+  restaurantMembershipActiveTitle: { en: "You're a member", sw: "Wewe ni mwanachama" },
+  restaurantMembershipMemberLabel: { en: "Restaurant membership", sw: "Uanachama wa Restaurant" },
+  restaurantMembershipPaused: { en: "Paused", sw: "Imesitishwa" },
+  restaurantMembershipLeave: { en: "Leave membership", sw: "Ondoka uanachama" },
+  restaurantMembershipLeaveConfirm: {
+    en: "Leave restaurant membership? You can join again later.",
+    sw: "Ondoka uanachama wa restaurant? Unaweza kujiunga tena baadaye.",
+  },
+  restaurantMembershipPhoneHint: {
+    en: "Add your phone number in your profile to receive WhatsApp meal reminders.",
+    sw: "Ongeza namba ya simu kwenye wasifu wako upokee ukumbusho wa WhatsApp.",
+  },
   restaurantMembershipNone: { en: "You are not a restaurant member yet.", sw: "Bado hujajiunga na uanachama wa restaurant." },
   restaurantMembershipEnroll: { en: "Join membership", sw: "Jiunge uanachama" },
   restaurantMembershipEnrollTitle: { en: "Join restaurant membership", sw: "Jiunge uanachama wa Restaurant" },
@@ -265,6 +277,15 @@ export const UI_MESSAGES = {
   addressPlaceholder: { en: "Street, area, city — where we deliver", sw: "Mtaa, eneo, jiji — tunapofikisha" },
   noteOptional: { en: "Note (optional)", sw: "Maelezo (si lazima)" },
   pickProducts: { en: "Pick at least one product for your basket", sw: "Chagua angalau bidhaa moja kwenye kikapu" },
+  membershipDistinctProgress: {
+    en: "{n} of {min} different products",
+    sw: "Bidhaa {n} kati ya {min} tofauti",
+  },
+  membershipMinProductsRequired: {
+    en: "Membership needs at least {min} different products (punguzo na usafiri bure). With fewer items, shop on-demand instead — no membership discount.",
+    sw: "Uanachama unahitaji angalau bidhaa {min} tofauti (punguzo na usafiri). Kama huna hivyo, nunua kwa oda ya kawaida — bila punguzo la uanachama.",
+  },
+  membershipShopOnDemand: { en: "Shop on-demand instead", sw: "Nunua kwa oda ya kawaida" },
   monthDayLabel: { en: "Day of month (1–28)", sw: "Siku ya mwezi (1–28)" },
   pauseWeek: { en: "Pause 1 week", sw: "Sitisha wiki 1" },
   pausing: { en: "Pausing…", sw: "Inasitisha…" },
@@ -275,6 +296,20 @@ export const UI_MESSAGES = {
   membershipHint: {
     en: "Pay upfront each cycle. You can pause for a week or shop extra items anytime.",
     sw: "Lipa mbele kila mzigo. Unaweza kusitisha kwa wiki au kununua bidhaa zaidi wakati wowote.",
+  },
+  subscriptionPaymentPending: {
+    en: "Complete payment to activate your subscription.",
+    sw: "Maliza malipo ili uanze usajili wako.",
+  },
+  subscriptionPaymentExpired: {
+    en: "Your payment link expired. Tap below to get a new one.",
+    sw: "Kiungo cha malipo kimeisha muda. Bofya hapa chini kupata kipya.",
+  },
+  resumePayment: { en: "Get payment link", sw: "Pata kiungo cha malipo" },
+  cancelSubscription: { en: "Cancel subscription", sw: "Futa usajili" },
+  cancelPendingSubscriptionConfirm: {
+    en: "Cancel this subscription? You can enroll again later.",
+    sw: "Futa usajili huu? Unaweza kujiunga tena baadaye.",
   },
   enrollProgress: { en: "Enrollment progress", sw: "Hatua za usajili" },
   reduceQty: { en: "Reduce quantity", sw: "Punguza idadi" },
@@ -479,6 +514,20 @@ export const UI_MESSAGES = {
     en: "Your pay-on-delivery request was not approved.",
     sw: "Ombi lako la kulipia ukifika halikukubaliwa.",
   },
+  orderRejectedPayLaterHint: {
+    en: "You can pay now with Lipa Namba or cancel this order. You cannot request pay-on-delivery again for this order.",
+    sw: "Unaweza kulipa sasa kwa Lipa Namba au kufuta oda hii. Huwezi kuomba kulipia baadaye tena kwa oda hii.",
+  },
+  orderRejectedPayLaterAction: {
+    en: "Pay now or cancel order",
+    sw: "Lipa sasa au futa oda",
+  },
+  cancelOrder: { en: "Cancel order", sw: "Futa oda" },
+  cancellingOrder: { en: "Cancelling…", sw: "Inafuta…" },
+  cancelRejectedOrderConfirm: {
+    en: "Cancel this order? This cannot be undone.",
+    sw: "Futa oda hii? Hatua hii haiwezi kutenduliwa.",
+  },
   payOnDeliveryWaitTitle: {
     en: "Pay when your order arrives",
     sw: "Lipa ukifika mzigo",
@@ -621,7 +670,22 @@ export const UI_MESSAGES = {
     en: "You already used this payment reference on another order. Send the reference for this transaction only.",
     sw: "Reference hii tayari umetumia kwenye oda nyingine. Tuma reference ya muamala huu pekee.",
   },
-  paymentRefPlaceholder: { en: "e.g. CKL123456789 or SMS message", sw: "Mf. CKL123456789 au ujumbe wa SMS" },
+  paymentRefPlaceholder: {
+    en: "e.g. QFG7H2K9XM or paste SMS",
+    sw: "Mf. QFG7H2K9XM au bandika SMS",
+  },
+  paymentRefRequired: {
+    en: "Enter your payment reference from the M-Pesa / mobile money SMS.",
+    sw: "Andika reference ya malipo kutoka SMS ya M-Pesa / mitandao ya simu.",
+  },
+  paymentRefInvalid: {
+    en: "This does not look like a valid payment reference. Use the code from your SMS (usually 10–14 letters and numbers).",
+    sw: "Hii haionekani kama reference sahihi. Tumia msimbo kutoka SMS yako (kawaida herufi na namba 10–14).",
+  },
+  paymentRefFormatHint: {
+    en: "Accepted: M-Pesa, Mixx/Tigo, Airtel, Halopesa — numeric (10–14 digits) or mixed letters & numbers.",
+    sw: "Inakubaliwa: M-Pesa, Mixx/Tigo, Airtel, Halopesa — namba tu (10–14) au mchanganyiko wa herufi na namba.",
+  },
   orderRefHint: { en: "Order reference (memo):", sw: "Reference ya oda (kumbukumbu):" },
   paymentSubmitting: { en: "Submitting…", sw: "Inatuma…" },
   paymentSubmit: { en: "I paid — submit info", sw: "Nimelipa — tuma taarifa" },

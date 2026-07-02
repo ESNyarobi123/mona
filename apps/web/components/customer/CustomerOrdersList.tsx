@@ -6,7 +6,7 @@ import { useAppLocale } from "../providers/AppLocaleProvider";
 import { apiGet, getStoredUser } from "../../lib/admin-api";
 import { formatDate, formatMoney } from "../../lib/format";
 import { orderStatusLabel, SLOT_I18N } from "../../lib/customer-i18n";
-import { canCustomerPayOrder, isPayOnDeliveryOrder, needsPayOnDeliveryApproval } from "@monana/utils";
+import { canCustomerPayOrder, isPayOnDeliveryOrder, isPayOnDeliveryRejected, needsPayOnDeliveryApproval } from "@monana/utils";
 
 type OrderItem = { name: string; quantity: string | number };
 type Payment = { id?: string; status: string } | null;
@@ -24,6 +24,7 @@ type OrderRow = {
   payment?: Payment;
   paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
   submittedAt?: string | null;
+  payOnDeliveryRejectedAt?: string | null;
 };
 
 type OrdersResponse = OrderRow[] | { items: OrderRow[]; meta: { total: number } };
@@ -55,6 +56,9 @@ function paymentStatusLabel(
 ) {
   if (o.payment?.status === "PAID" || o.payment?.status === "AWAITING_CONFIRMATION") {
     return `${t("payment")}: ${o.payment.status.replace(/_/g, " ")}`;
+  }
+  if (isPayOnDeliveryRejected(o)) {
+    return t("orderRejectedPayLaterAction");
   }
   if (isPayOnDeliveryOrder(o) && needsPayOnDeliveryApproval(o)) {
     return t("orderAwaitingApproval");

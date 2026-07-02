@@ -7,6 +7,7 @@ import {
   createSubscriptionDelivery,
   computeNextRunAt,
 } from "./subscription-engine";
+import { findSubscriptionPendingPayment } from "./subscription-pending";
 
 export {
   enrollSubscription,
@@ -37,6 +38,13 @@ export {
   previewMembershipBasket,
   deliveryDayLabel,
 } from "./customer-store";
+
+export {
+  findSubscriptionPendingPayment,
+  refreshSubscriptionPendingCheckout,
+  customerCancelPendingSubscription,
+  type SubscriptionPendingPayment,
+} from "./subscription-pending";
 
 export { enrollCustomerMembership } from "./membership-enroll";
 
@@ -343,11 +351,28 @@ export async function createSubscription(data: {
 }
 
 export async function listUserSubscriptions(userId: string) {
-  return prisma.grocerySubscription.findMany({
+  const subs = await prisma.grocerySubscription.findMany({
     where: { userId },
-    include: { package: true, orders: { take: 3, orderBy: { createdAt: "desc" } } },
+    include: {
+      package: true,
+      orders: {
+        take: 5,
+        orderBy: { createdAt: "desc" },
+        include: { payment: true },
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
+
+  return Promise.all(
+    subs.map(async (sub) => ({
+      ...sub,
+      pendingPayment:
+        sub.status === "PENDING_PAYMENT"
+          ? await findSubscriptionPendingPayment(sub.id, userId)
+          : null,
+    }))
+  );
 }
 
 export async function getSubscriptionById(id: string) {

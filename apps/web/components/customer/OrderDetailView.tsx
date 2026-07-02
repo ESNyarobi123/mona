@@ -3,14 +3,16 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { apiGet } from "../../lib/admin-api";
+import { apiGet, apiPost } from "../../lib/admin-api";
 import { formatDate, formatMoney } from "../../lib/format";
 import { orderStatusLabel, SLOT_I18N, t as translate } from "../../lib/customer-i18n";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 import { buildOrderTimeline, isOrderActive } from "../../lib/order-timeline";
 import {
+  canCustomerCancelRejectedPayOnDelivery,
   canCustomerPayOrder,
   isPayOnDeliveryOrder,
+  isPayOnDeliveryRejected,
   isWaitingForDeliveryBeforePayment,
   needsPayOnDeliveryApproval,
 } from "@monana/utils";
@@ -29,6 +31,7 @@ type OrderDetail = {
   note?: string | null;
   paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
   submittedAt?: string | null;
+  payOnDeliveryRejectedAt?: string | null;
   items: { name: string; quantity: string | number; price: string | number }[];
   payment?: { id: string; status: string } | null;
   allowedNextStatuses?: string[];
@@ -51,6 +54,7 @@ export function OrderDetailView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   const load = useCallback(async () => {
     if (!orderId) return;
@@ -93,10 +97,27 @@ export function OrderDetailView() {
     }
   }
 
+  async function onCancelRejected() {
+    if (!order || !showCancelRejected) return;
+    if (!window.confirm(t("cancelRejectedOrderConfirm"))) return;
+    setCancelling(true);
+    setError("");
+    try {
+      await apiPost(`/api/orders/${order.id}/cancel`, {});
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("loadFailed"));
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   const timeline = order ? buildOrderTimeline(order.module, order.status, locale) : [];
   const isPayOnDelivery = order ? isPayOnDeliveryOrder(order) : false;
+  const podRejected = order ? isPayOnDeliveryRejected(order) : false;
   const awaitingApproval = order ? needsPayOnDeliveryApproval(order) : false;
   const showPayLink = order ? canCustomerPayOrder(order) : false;
+  const showCancelRejected = order ? canCustomerCancelRejectedPayOnDelivery(order) : false;
   const awaitingPaymentAdmin =
     isPayOnDelivery &&
     !!order?.submittedAt &&
@@ -151,8 +172,28 @@ export function OrderDetailView() {
         <p className="auth-form__error">{error}</p>
       ) : order ? (
         <>
-          {order.status === "CANCELLED" && isPayOnDelivery && !order.submittedAt ? (
-            <p className="order-detail-page__cancelled">{t("orderRejectedPayLater")}</p>
+          {podRejected ? (
+            <section className="order-detail-card order-detail-card--alert">
+              <h2>{t("orderRejectedPayLater")}</h2>
+              <p>{t("orderRejectedPayLaterHint")}</p>
+              <div className="order-detail-actions">
+                {showPayLink ? (
+                  <Link href={`/pay/${order.id}`} className="landing-btn landing-btn--orange">
+                    {t("payNow")}
+                  </Link>
+                ) : null}
+                {showCancelRejected ? (
+                  <button
+                    type="button"
+                    className="landing-btn landing-btn--ghost"
+                    onClick={onCancelRejected}
+                    disabled={cancelling}
+                  >
+                    {cancelling ? t("cancellingOrder") : t("cancelOrder")}
+                  </button>
+                ) : null}
+              </div>
+            </section>
           ) : order.status === "CANCELLED" ? (
             <p className="order-detail-page__cancelled">{t("cancelledNote")}</p>
           ) : null}
@@ -260,7 +301,7 @@ export function OrderDetailView() {
                 : translate(locale, "statusPendingPay")}
             </p>
             {awaitingPaymentAdmin ? <p>{t("paymentAwaitingAdmin")}</p> : null}
-            {showPayLink ? (
+            {showPayLink && !podRejected ? (
               <Link href={`/pay/${order.id}`} className="landing-btn landing-btn--orange">
                 {t("payNow")}
               </Link>

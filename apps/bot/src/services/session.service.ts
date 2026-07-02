@@ -21,6 +21,7 @@ export type State =
   | "CHOOSING_RESTAURANT_HUB"
   | "CHOOSING_RESTAURANT_MEMBERSHIP_SLOTS"
   | "ASK_RESTAURANT_MEMBERSHIP_ADDRESS"
+  | "MANAGING_RESTAURANT_MEMBERSHIP"
   | "CHOOSING_LANGUAGE"
   | "CHOOSING_GROCERY"
   | "MANAGING_SUBSCRIPTION"
@@ -81,6 +82,7 @@ export type SessionData = {
   selectedPackageKind?: string;
   pendingSubOrderId?: string;
   selectedMealSlots?: ("BREAKFAST" | "LUNCH" | "DINNER")[];
+  restaurantMembershipId?: string;
 };
 
 export type Session = { state: State; data: SessionData };

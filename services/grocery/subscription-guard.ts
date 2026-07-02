@@ -9,7 +9,9 @@ export async function assertCanEnrollNewSubscription(userId: string) {
   if (!blocking) return;
 
   if (blocking.status === "PENDING_PAYMENT") {
-    throw new Error("Una usajili unasubiri malipo. Lipa kwanza au andika *menu* → Grocery.");
+    throw new Error(
+      "Una usajili unasubiri malipo. Nenda Membership kufanya malipo au kufuta usajili, kisha ujaribu tena."
+    );
   }
   throw new Error("Tayari una usajili unaotumika. Andika *hariri* kubadilisha kikapu au *sitisha*.");
 }

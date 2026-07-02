@@ -175,6 +175,8 @@ model Order {
   paymentTiming  PaymentTiming  @default(PAY_NOW)
   /// Set when order is officially submitted (pay-now: on payment ref; pay-on-delivery: on admin approve)
   submittedAt    DateTime?
+  /// Admin rejected pay-on-delivery — customer may pay now or cancel (not request POD again)
+  payOnDeliveryRejectedAt DateTime?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 

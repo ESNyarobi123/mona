@@ -74,36 +74,3 @@ export function isPaidWithoutReference(text: string): boolean {
   }
   return BOT_KEYWORDS.paid.some((k) => lower === k);
 }
-
-/**
- * Parse an M-Pesa / Lipa Namba proof reference from WhatsApp text.
- * Accepts "nimelipa CODE", a pasted code, or a short alphanumeric token.
- */
-export function parseCustomerPaymentReference(text: string, locale: AppLocale = "sw"): string | null {
-  const fromPrefix = extractPaymentReference(text, locale);
-  if (fromPrefix) return fromPrefix;
-
-  const mpesa = extractMpesaCode(text);
-  if (mpesa) return mpesa;
-
-  const trimmed = text.trim().replace(/\s+/g, "");
-  if (/^[A-Za-z0-9.\-]{6,20}$/.test(trimmed) && /[0-9]/.test(trimmed)) {
-    return trimmed.toUpperCase();
-  }
-
-  return null;
-}
-
-/**
- * Detects a pasted mobile-money confirmation code (e.g. M-Pesa "QFG7H2K9LM").
- * Codes are alphanumeric, 6–15 chars, and contain at least one letter and one
- * digit so plain words/numbers are not mistaken for a payment reference.
- */
-export function extractMpesaCode(text: string): string | null {
-  const token = text.trim();
-  if (!/^[A-Za-z0-9.\-]{6,15}$/.test(token)) return null;
-  const hasLetter = /[A-Za-z]/.test(token);
-  const hasDigit = /[0-9]/.test(token);
-  if (!hasLetter || !hasDigit) return null;
-  return token.toUpperCase();
-}

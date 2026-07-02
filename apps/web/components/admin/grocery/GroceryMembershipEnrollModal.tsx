@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { apiGet, apiPost, normalizeApiList } from "../../../lib/admin-api";
 import { formatMoney } from "../../../lib/format";
-import { unitLabel } from "@monana/utils";
+import { unitLabel, MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS } from "@monana/utils";
 import { useAdminLocale } from "../AdminLocaleProvider";
 
 type Plan = {
@@ -38,7 +38,7 @@ type Setup = {
   };
   products: Product[];
   categories: { id: string; name: string }[];
-  rules: { minBasketItems: number; orderCutoffHours: number; upfrontPaymentRequired: boolean };
+  rules: { minBasketItems: number; minDistinctProducts?: number; orderCutoffHours: number; upfrontPaymentRequired: boolean };
 };
 
 type Preview = {
@@ -107,6 +107,14 @@ export function GroceryMembershipEnrollModal({ onClose, onEnrolled }: Props) {
     [basketLines]
   );
 
+  const minDistinct =
+    setup?.rules.minDistinctProducts ?? setup?.rules.minBasketItems ?? MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS;
+  const distinctBasketCount = useMemo(
+    () => new Set(basketPayload.map((b) => b.productId)).size,
+    [basketPayload]
+  );
+  const membershipBasketReady = distinctBasketCount >= minDistinct;
+
   const refreshPreview = useCallback(async () => {
     if (basketPayload.length === 0) {
       setPreview(null);
@@ -164,6 +172,10 @@ export function GroceryMembershipEnrollModal({ onClose, onEnrolled }: Props) {
   async function enroll(e: React.FormEvent) {
     e.preventDefault();
     if (!userId || basketPayload.length === 0 || address.trim().length < 3) return;
+    if (!membershipBasketReady) {
+      alert(tf("membershipMinProductsAdmin", { min: minDistinct }));
+      return;
+    }
     setSaving(true);
     try {
       await apiPost("/api/grocery/store/membership", {
@@ -281,6 +293,14 @@ export function GroceryMembershipEnrollModal({ onClose, onEnrolled }: Props) {
 
                 <section className="admin-membership-enroll__section">
                   <h3 className="admin-membership-enroll__title">{t("defaultBasket")}</h3>
+                  <p
+                    className={`admin-crud-form__hint${membershipBasketReady ? "" : " admin-crud-form__hint--warn"}`}
+                  >
+                    {tf("membershipBasketProgress", { n: distinctBasketCount, min: minDistinct })}
+                    {!membershipBasketReady
+                      ? ` — ${tf("membershipMinProductsAdmin", { min: minDistinct })}`
+                      : ""}
+                  </p>
                   <input
                     type="search"
                     className="admin-crud-form__input"
@@ -357,7 +377,11 @@ export function GroceryMembershipEnrollModal({ onClose, onEnrolled }: Props) {
                 </section>
 
                 <div className="admin-crud-form__actions">
-                  <button type="submit" className="admin-btn" disabled={saving || basketPayload.length === 0}>
+                  <button
+                    type="submit"
+                    className="admin-btn"
+                    disabled={saving || basketPayload.length === 0 || !membershipBasketReady}
+                  >
                     {saving ? t("saving") : t("enrollMembership")}
                   </button>
                   <button type="button" className="admin-btn secondary" onClick={onClose}>

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { apiGet, apiPost, getStoredUser } from "../../lib/admin-api";
 import { formatMoney } from "../../lib/format";
-import { unitLabel } from "@monana/utils";
+import { unitLabel, MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS } from "@monana/utils";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 import { GroceryDeliverySlotPicker } from "./GroceryDeliverySlotPicker";
 
@@ -43,6 +43,7 @@ type Setup = {
   };
   products: Product[];
   categories: { id: string; name: string }[];
+  rules?: { minDistinctProducts?: number; minBasketItems?: number };
 };
 
 type BasketLine = { productId: string; quantity: number };
@@ -120,6 +121,16 @@ export function MembershipEnrollView() {
       setLoading(true);
       setError("");
       try {
+        if (user) {
+          const subs = await apiGet<{ status: string }[]>(
+            `/api/grocery/subscriptions?userId=${user.id}`
+          );
+          if (subs.some((s) => s.status === "PENDING_PAYMENT")) {
+            router.replace("/account/subscription");
+            return;
+          }
+        }
+
         const setupData = await apiGet<Setup>(`/api/grocery/store/membership?locale=${locale}`);
         if (cancelled) return;
         setSetup(setupData);
@@ -162,6 +173,11 @@ export function MembershipEnrollView() {
         .map(([productId, quantity]) => ({ productId, quantity })),
     [basket]
   );
+
+  const minDistinctProducts =
+    setup?.rules?.minDistinctProducts ?? MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS;
+  const distinctBasketCount = basketLines.length;
+  const membershipBasketReady = distinctBasketCount >= minDistinctProducts;
 
   useEffect(() => {
     if (!setup || plan !== "WEEKLY") return;
@@ -221,6 +237,12 @@ export function MembershipEnrollView() {
     if (step === "basket") {
       if (basketLines.length === 0) {
         setError(t("pickProducts"));
+        return;
+      }
+      if (!membershipBasketReady) {
+        setError(
+          t("membershipMinProductsRequired").replace("{min}", String(minDistinctProducts))
+        );
         return;
       }
       try {
@@ -380,6 +402,25 @@ export function MembershipEnrollView() {
         <section className="enroll-panel">
           <h2>{t("enrollStepBasket")}</h2>
           {selectedPackage ? <p className="enroll-panel__hint">{t("enrollPackageHint")}</p> : null}
+          <div
+            className={`enroll-basket-progress${membershipBasketReady ? " enroll-basket-progress--ready" : ""}`}
+          >
+            <p className="enroll-basket-progress__label">
+              {t("membershipDistinctProgress")
+                .replace("{n}", String(distinctBasketCount))
+                .replace("{min}", String(minDistinctProducts))}
+            </p>
+            {!membershipBasketReady ? (
+              <>
+                <p className="enroll-panel__hint enroll-basket-progress__hint">
+                  {t("membershipMinProductsRequired").replace("{min}", String(minDistinctProducts))}
+                </p>
+                <Link href="/grocery/products" className="landing-btn landing-btn--ghost enroll-basket-progress__cta">
+                  {t("membershipShopOnDemand")} →
+                </Link>
+              </>
+            ) : null}
+          </div>
           <ul className="enroll-products">
             {setup.products.map((p) => {
               const qty = basket[p.id] ?? 0;
@@ -487,7 +528,12 @@ export function MembershipEnrollView() {
             {submitting ? t("enrolling") : t("confirmEnroll")}
           </button>
         ) : (
-          <button type="button" className="landing-btn landing-btn--orange" onClick={onContinue}>
+          <button
+            type="button"
+            className="landing-btn landing-btn--orange"
+            onClick={onContinue}
+            disabled={step === "basket" && basketLines.length > 0 && !membershipBasketReady}
+          >
             {t("continue")}
           </button>
         )}

@@ -15,7 +15,7 @@ import { AdminUserCell } from "../../../../components/admin/dashboard/AdminUserC
 import { AdminOrderTimeline } from "../../../../components/admin/dashboard/AdminOrderTimeline";
 import { AdminLoading } from "../../../../components/admin/dashboard/AdminLoading";
 import { useAdminLocale } from "../../../../components/admin/AdminLocaleProvider";
-import { needsPayOnDeliveryApproval, orderFulfillmentBlockedReason } from "@monana/utils";
+import { isPayOnDeliveryRejected, needsPayOnDeliveryApproval, orderFulfillmentBlockedReason } from "@monana/utils";
 
 type OrderItem = {
   name: string;
@@ -35,6 +35,7 @@ type Order = {
   createdAt: string;
   paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
   submittedAt?: string | null;
+  payOnDeliveryRejectedAt?: string | null;
   user: { name: string | null; phone: string };
   items: OrderItem[];
   payment?: { status: string; reference: string | null } | null;
@@ -106,7 +107,8 @@ function OrderGrid({
         const next = NEXT_STATUS[o.status];
         const busy = busyId === o.id;
         const needsApproval = needsPayOnDeliveryApproval(o);
-        const advanceBlocked = !needsApproval && next ? orderFulfillmentBlockedReason(o, locale) : null;
+        const podRejected = isPayOnDeliveryRejected(o);
+        const advanceBlocked = !needsApproval && !podRejected && next ? orderFulfillmentBlockedReason(o, locale) : null;
         const previewItems = o.items.slice(0, 3);
         const extraCount = Math.max(0, o.items.length - previewItems.length);
 
@@ -168,6 +170,11 @@ function OrderGrid({
               <div className="admin-payment-card__alert">
                 <span aria-hidden>⏳</span>
                 {t("payLaterRequestAwaiting")}
+              </div>
+            ) : podRejected ? (
+              <div className="admin-payment-card__alert">
+                <span aria-hidden>💳</span>
+                {t("payLaterRejectedAwaitingPayment")}
               </div>
             ) : advanceBlocked ? (
               <div className="admin-payment-card__alert">

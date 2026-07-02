@@ -3,11 +3,13 @@ import type { AppLocale } from "@monana/i18n";
 import {
   MEMBERSHIP_PLANS,
   MAX_MEMBERSHIP_DISCOUNT_PERCENT,
+  MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS,
   groceryRecurringDeliveryDays,
   getUpcomingGroceryDeliverySlots,
   dayOfWeekLabel,
   membershipPlanTitle,
   packageKindLabel,
+  assertGroceryMembershipBasketSize,
 } from "@monana/utils";
 import {
   type PackageItem,
@@ -18,6 +20,7 @@ import {
   parsePackageItems,
   frequencyForPackageKind,
 } from "./subscription-engine";
+import { findSubscriptionPendingPayment, refreshSubscriptionPendingCheckout } from "./subscription-pending";
 
 /** Admin-defined packages for WhatsApp / store (excludes auto shell membership packages). */
 export async function getStorePackages(locale: AppLocale = "en") {
@@ -61,34 +64,28 @@ export async function getGroceryStoreHome(userId: string, locale: AppLocale = "e
   const pending = subs.find((s) => s.status === "PENDING_PAYMENT");
   const primary = active ?? paused ?? pending ?? null;
 
-  let pendingPayment: { orderId?: string; intentId?: string; paymentId?: string; amount: string } | null =
-    null;
+  let pendingPayment: {
+    orderId?: string;
+    intentId?: string;
+    paymentId?: string;
+    amount: string;
+    expired?: boolean;
+  } | null = null;
+
   if (pending) {
-    const order = pending.orders.find(
-      (o) => o.payment && o.payment.status !== "PAID" && o.status !== "CANCELLED"
-    );
-    if (order?.payment) {
+    const state = await findSubscriptionPendingPayment(pending.id, userId);
+    if (state?.status === "ready") {
       pendingPayment = {
-        orderId: order.id,
-        paymentId: order.payment.id,
-        amount: String(order.total),
+        amount: state.amount,
+        ...(state.kind === "CHECKOUT_INTENT"
+          ? { intentId: state.payId }
+          : { orderId: state.payId }),
       };
-    } else {
-      const intent = await prisma.checkoutIntent.findFirst({
-        where: {
-          userId,
-          consumedAt: null,
-          expiresAt: { gt: new Date() },
-          payload: { path: ["subscriptionId"], equals: pending.id },
-        },
-        orderBy: { createdAt: "desc" },
-      });
-      if (intent) {
-        pendingPayment = {
-          intentId: intent.id,
-          amount: String(intent.total),
-        };
-      }
+    } else if (state?.status === "expired") {
+      pendingPayment = {
+        amount: state.amount ?? "0",
+        expired: true,
+      };
     }
   }
 
@@ -205,7 +202,8 @@ export async function getMembershipSetup(locale: AppLocale = "en") {
     products,
     categories,
     rules: {
-      minBasketItems: 1,
+      minBasketItems: MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS,
+      minDistinctProducts: MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS,
       orderCutoffHours: 48,
       upfrontPaymentRequired: true,
     },
@@ -239,6 +237,8 @@ export async function previewMembershipBasket(
   locale: AppLocale = "en",
   packageId?: string
 ) {
+  assertGroceryMembershipBasketSize(items, locale);
+
   let pricing: Awaited<ReturnType<typeof pricingForSubscription>>;
   let planLabel = membershipPlanTitle(plan, locale);
 

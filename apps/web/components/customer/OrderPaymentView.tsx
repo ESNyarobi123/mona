@@ -8,6 +8,8 @@ import { formatMoney } from "../../lib/format";
 import {
   canCustomerPayOrder,
   isWaitingForDeliveryBeforePayment,
+  normalizePaymentProofReference,
+  paymentReferenceInvalidMessage,
 } from "@monana/utils";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 
@@ -71,6 +73,7 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<OrderInfo | null>(null);
   const [payInfo, setPayInfo] = useState<PaymentInfo | null>(null);
   const [reference, setReference] = useState("");
+  const [referenceTouched, setReferenceTouched] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -156,7 +159,11 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
     if (!payInfo) return;
     const ref = reference.trim();
     if (!ref) {
-      setError("Andika reference ya malipo (ujumbe kutoka M-Pesa).");
+      setError(t("paymentRefRequired"));
+      return;
+    }
+    if (!normalizePaymentProofReference(ref)) {
+      setError(t("paymentRefInvalid"));
       return;
     }
     setSubmitting(true);
@@ -176,6 +183,9 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
       setSubmitting(false);
     }
   }
+
+  const referenceInvalid =
+    referenceTouched && reference.trim().length > 0 && !normalizePaymentProofReference(reference);
 
   if (loading) {
     return (
@@ -331,16 +341,27 @@ export function OrderPaymentView({ orderId }: { orderId: string }) {
                     </span>
                     <input
                       value={reference}
-                      onChange={(e) => setReference(e.target.value)}
+                      onChange={(e) => {
+                        setReference(e.target.value);
+                        if (error) setError("");
+                      }}
+                      onBlur={() => setReferenceTouched(true)}
                       placeholder={t("paymentRefPlaceholder")}
                       required
                       autoComplete="off"
+                      inputMode="text"
+                      maxLength={80}
+                      aria-invalid={referenceInvalid || undefined}
                     />
                   </div>
                 </label>
                 <p className="payment-confirm-form__ref-hint">
+                  {t("paymentRefFormatHint")}
+                </p>
+                <p className="payment-confirm-form__ref-hint">
                   {t("checkoutRefHint")}
                 </p>
+                {referenceInvalid ? <p className="auth-form__error">{t("paymentRefInvalid")}</p> : null}
                 {error ? <p className="auth-form__error">{error}</p> : null}
                 <button
                   type="submit"

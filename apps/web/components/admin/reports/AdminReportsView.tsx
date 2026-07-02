@@ -40,6 +40,7 @@ type Dashboard = {
         orderRef: string;
         customer: { name: string | null; phone: string };
         address: string;
+        note: string | null;
         zoneName: string | null;
         total: number;
         completedAt: string | null;
@@ -54,6 +55,7 @@ type Dashboard = {
           orderRef: string;
           customer: { name: string | null; phone: string };
           address: string;
+          note: string | null;
         }>;
       }>;
       unassigned: Array<{
@@ -61,6 +63,7 @@ type Dashboard = {
         orderRef: string;
         customer: { name: string | null; phone: string };
         address: string;
+        note: string | null;
       }>;
     };
   } | null;
@@ -150,7 +153,8 @@ export function AdminReportsView() {
         s.orderRef.toLowerCase().includes(q) ||
         s.customer.name?.toLowerCase().includes(q) ||
         s.customer.phone.includes(q) ||
-        s.address.toLowerCase().includes(q)
+        s.address.toLowerCase().includes(q) ||
+        s.note?.toLowerCase().includes(q)
     );
   }, [bundle?.packing.sheets, packSearch]);
 
@@ -576,10 +580,23 @@ export function AdminReportsView() {
                             <header className="admin-reports-sheet-detail__head">
                               <div>
                                 <strong>{currentSheet.orderRef}</strong>
-                                <p>
-                                  {currentSheet.customer.name ?? currentSheet.customer.phone} ·{" "}
-                                  {currentSheet.address}
-                                </p>
+                                <p>{currentSheet.customer.name ?? currentSheet.customer.phone}</p>
+                                <div className="admin-reports-sheet-detail__delivery">
+                                  <p>
+                                    <span className="admin-reports-sheet-detail__label">
+                                      {t("deliveryAddress")}
+                                    </span>
+                                    {currentSheet.address}
+                                  </p>
+                                  {currentSheet.note ? (
+                                    <p>
+                                      <span className="admin-reports-sheet-detail__label">
+                                        {t("extraDetails")}
+                                      </span>
+                                      {currentSheet.note}
+                                    </p>
+                                  ) : null}
+                                </div>
                               </div>
                               <span>{currentSheet.total.toLocaleString()} TZS</span>
                             </header>
@@ -629,6 +646,11 @@ export function AdminReportsView() {
                               <div>
                                 <strong>{stop.customer.name ?? stop.customer.phone}</strong>
                                 <p>{stop.address}</p>
+                                {stop.note ? (
+                                  <p className="admin-market-route-extra">
+                                    <span>{t("extraDetails")}:</span> {stop.note}
+                                  </p>
+                                ) : null}
                               </div>
                               <span className="admin-market-route-ref">{stop.orderRef}</span>
                             </li>
@@ -648,6 +670,11 @@ export function AdminReportsView() {
                               <div>
                                 <strong>{stop.customer.name ?? stop.customer.phone}</strong>
                                 <p>{stop.address}</p>
+                                {stop.note ? (
+                                  <p className="admin-market-route-extra">
+                                    <span>{t("extraDetails")}:</span> {stop.note}
+                                  </p>
+                                ) : null}
                               </div>
                               <span className="admin-market-route-ref">{stop.orderRef}</span>
                             </li>

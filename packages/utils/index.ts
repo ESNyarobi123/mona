@@ -6,6 +6,7 @@ export * from "./pagination";
 export * from "./subscription";
 export * from "./grocery-delivery";
 export * from "./order-payment";
+export * from "./payment-reference";
 
 /** Format a number as Tanzanian Shillings, e.g. 1500 -> "TZS 1,500". */
 export function formatTZS(amount: number): string {
@@ -52,17 +53,6 @@ export function calcTotal(items: { price: number; quantity: number }[]): number 
 /** Generate a short human-friendly order reference. */
 export function genOrderRef(): string {
   return "MNA-" + Date.now().toString(36).toUpperCase();
-}
-
-/**
- * Normalize a customer-submitted Lipa Namba / M-Pesa proof reference for storage and dedup.
- * Returns empty string when input is not usable as a proof reference.
- */
-export function normalizePaymentProofReference(reference: string): string {
-  const trimmed = reference.trim();
-  if (!trimmed) return "";
-  if (/^manual$/i.test(trimmed)) return "";
-  return trimmed.replace(/\s+/g, "").toUpperCase();
 }
 
 export function paymentReferenceDuplicateMessage(

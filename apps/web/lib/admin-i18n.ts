@@ -208,8 +208,12 @@ export const ADMIN_MESSAGES = {
     sw: "Kubali ombi la kulipia ukifika na kuwasilisha oda?",
   },
   rejectPayLaterRequestPrompt: {
-    en: "Reject this request? The order will be cancelled.",
-    sw: "Kataa ombi hili? Oda itafutwa.",
+    en: "Reject this request? The customer can pay now or cancel the order — they cannot request pay-on-delivery again.",
+    sw: "Kataa ombi hili? Mteja anaweza kulipa sasa au kufuta oda — hawezi kuomba kulipia baadaye tena.",
+  },
+  payLaterRejectedAwaitingPayment: {
+    en: "Pay-on-delivery rejected — waiting for customer to pay or cancel",
+    sw: "Kulipia baadaye kumekataliwa — mteja alipe sasa au afute oda",
   },
   payLaterRequestsCount: { en: "{n} awaiting approval", sw: "{n} zinasubiri idhini" },
   totalAmount: { en: "Total amount", sw: "Jumla ya kiasi" },
@@ -681,6 +685,7 @@ export const ADMIN_MESSAGES = {
   selectCustomer: { en: "Select customer", sw: "Chagua mteja" },
   selectPackage: { en: "Select package", sw: "Chagua kifurushi" },
   deliveryAddress: { en: "Delivery address", sw: "Anwani ya kufikishia" },
+  extraDetails: { en: "Extra details", sw: "Maelezo ya ziada" },
   deliveryDayWeekly: { en: "Delivery day (this week)", sw: "Siku ya utoaji (wiki hii)" },
   deliveryDayRecurringWeekly: { en: "Delivery day (every week)", sw: "Siku ya utoaji (kila wiki)" },
   pickDeliverySlot: { en: "Pick delivery day", sw: "Chagua siku ya utoaji" },
@@ -763,8 +768,16 @@ export const ADMIN_MESSAGES = {
   },
   membershipNavDesc: { en: "Weekly & monthly plans", sw: "Mipango ya wiki/mwezi" },
   membershipAdminDesc: {
-    en: "Enroll customers with a custom default basket — discount & free delivery apply automatically.",
-    sw: "Sajili wateja na kikapu maalum — punguzo na uwasilishaji bure vinatumika kiotomatiki.",
+    en: "Enroll customers with a custom basket — at least 12 different products required for membership perks.",
+    sw: "Sajili wateja na kikapu maalum — angalau bidhaa 12 tofauti kwa faida za uanachama.",
+  },
+  membershipBasketProgress: {
+    en: "{n} of {min} different products",
+    sw: "Bidhaa {n} kati ya {min} tofauti",
+  },
+  membershipMinProductsAdmin: {
+    en: "Need at least {min} different products. Advise on-demand order if fewer.",
+    sw: "Lazima bidhaa {min} tofauti. Mshauri oda ya kawaida ikiwa chache.",
   },
   enrollMembershipAdmin: { en: "Enroll membership", sw: "Sajili uanachama" },
   enrollMembership: { en: "Enroll customer", sw: "Sajili mteja" },

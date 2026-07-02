@@ -139,6 +139,7 @@ async function assertPayOnDeliveryPending(orderId: string) {
     throw new Error("Oda hii si ya kulipia ukifika");
   }
   if (order.submittedAt) throw new Error("Ombi hili tayari limeidhinishwa");
+  if (order.payOnDeliveryRejectedAt) throw new Error("Ombi hili tayari limekataliwa");
   if (order.status === "CANCELLED") throw new Error("Ombi hili limekataliwa");
   return order;
 }
@@ -165,9 +166,34 @@ export async function approvePayOnDeliveryRequest(orderId: string) {
   return updated;
 }
 
-/** Admin rejects pay-on-delivery request before the order is submitted. */
+/** Admin rejects pay-on-delivery request — customer may pay now or cancel (not POD again). */
 export async function rejectPayOnDeliveryRequest(orderId: string) {
   await assertPayOnDeliveryPending(orderId);
+  return prisma.order.update({
+    where: { id: orderId },
+    data: {
+      paymentTiming: "PAY_NOW",
+      payOnDeliveryRejectedAt: new Date(),
+    },
+  });
+}
+
+/** Customer cancels an order after pay-on-delivery was rejected by admin. */
+export async function customerCancelRejectedPayOnDelivery(orderId: string, userId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { payment: { select: { status: true } } },
+  });
+  if (!order) throw new Error("Oda haipatikani");
+  if (order.userId !== userId) throw new Error("Huna ruhusa");
+  if (order.status === "CANCELLED") throw new Error("Oda hii tayari imefutwa");
+  if (!order.payOnDeliveryRejectedAt) {
+    throw new Error("Huwezi kufuta oda hii");
+  }
+  if (order.payment?.status === "PAID" || order.payment?.status === "AWAITING_CONFIRMATION") {
+    throw new Error("Oda hii tayari ina malipo");
+  }
+
   return prisma.order.update({
     where: { id: orderId },
     data: { status: "CANCELLED" },

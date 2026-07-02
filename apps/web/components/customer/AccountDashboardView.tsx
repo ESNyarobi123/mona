@@ -41,6 +41,11 @@ type SubscriptionRow = {
   nextRunAt: string | null;
   address: string;
   package?: { name: string };
+  pendingPayment?: {
+    status: "ready" | "expired";
+    payId?: string;
+    amount?: string | null;
+  } | null;
 };
 
 type RestaurantMembershipRow = {
@@ -281,13 +286,20 @@ export function AccountDashboardView() {
             <div className="account-membership-banner">
               {restaurantMembership ? (
                 <>
+                  <div className="account-membership-banner__main">
+                    <strong>{t("restaurantMembershipMemberLabel")}</strong>
+                    <span className="order-status order-status--confirmed">{t("statusActive")}</span>
+                  </div>
                   <p className="account-membership-banner__meta">
                     {restaurantMembership.mealSlots
-                      .map((s) => SLOT_I18N[s]?.[locale] ?? s)
+                      .map((s) => `${SLOT_I18N[s]?.[locale] ?? s}`)
                       .join(" · ")}
                   </p>
+                  <p className="account-membership-banner__meta account-membership-banner__hint">
+                    {t("restaurantMembershipReminderNote")}
+                  </p>
                   <Link href="/account/restaurant/membership" className="landing-btn landing-btn--ghost landing-btn--sm">
-                    {t("restaurantMembershipActive")}
+                    {t("membershipManage")}
                   </Link>
                 </>
               ) : (
@@ -326,9 +338,32 @@ export function AccountDashboardView() {
                     </p>
                   ) : null}
                   <p className="account-membership-banner__addr">📍 {activeSub.address}</p>
-                  <Link href="/account/subscription" className="landing-btn landing-btn--ghost landing-btn--sm">
-                    {t("membershipManage")}
-                  </Link>
+                  {activeSub.status === "PENDING_PAYMENT" ? (
+                    <div className="account-membership-banner__actions">
+                      {activeSub.pendingPayment?.status === "ready" && activeSub.pendingPayment.payId ? (
+                        <Link
+                          href={`/pay/${activeSub.pendingPayment.payId}`}
+                          className="landing-btn landing-btn--orange landing-btn--sm"
+                        >
+                          {t("payNow")}
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/account/subscription"
+                          className="landing-btn landing-btn--orange landing-btn--sm"
+                        >
+                          {t("resumePayment")}
+                        </Link>
+                      )}
+                      <Link href="/account/subscription" className="landing-btn landing-btn--ghost landing-btn--sm">
+                        {t("membershipManage")}
+                      </Link>
+                    </div>
+                  ) : (
+                    <Link href="/account/subscription" className="landing-btn landing-btn--ghost landing-btn--sm">
+                      {t("membershipManage")}
+                    </Link>
+                  )}
                 </>
               ) : (
                 <>

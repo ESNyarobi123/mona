@@ -23,6 +23,7 @@ export type BotMessageKey =
   | "nameTooShort"
   | "basketUpdated"
   | "subscriptionPaused"
+  | "subscriptionCancelled"
   | "noActiveSubscription"
   | "cannotEditBasket"
   | "editBasketHeader"
@@ -44,6 +45,7 @@ export type BotMessageKey =
   | "membershipChooseDayMonthly"
   | "membershipChooseDayRecurring"
   | "membershipBasketHint"
+  | "membershipBasketTooSmall"
   | "membershipNoPlans"
   | "orderOnDemand"
   | "orderSubscription"
@@ -69,12 +71,18 @@ export type BotMessageKey =
   | "menuGrocery"
   | "groceryHubTitle"
   | "restaurantHubTitle"
+  | "restaurantAllWindowsClosed"
+  | "restaurantSlotClosed"
+  | "restaurantChooseSlot"
   | "restaurantMembershipChooseSlots"
   | "restaurantMembershipAddressHint"
   | "restaurantMembershipEnrolled"
   | "restaurantMembershipActive"
   | "restaurantMembershipNone"
   | "restaurantMembershipStatus"
+  | "restaurantMembershipManageMenu"
+  | "restaurantMembershipPausedBot"
+  | "restaurantMembershipLeft"
   | "restaurantMembershipFailed"
   | "groceryHubOnDemand"
   | "groceryHubSubscribe"
@@ -85,6 +93,8 @@ export type BotMessageKey =
   | "groceryManagePause"
   | "groceryManageShop"
   | "groceryManagePay"
+  | "groceryManageResumePay"
+  | "groceryManageCancel"
   | "grocerySubscribeTitle"
   | "grocerySubscribePackage"
   | "grocerySubscribeCustom"
@@ -118,6 +128,7 @@ const EN: Record<BotMessageKey, string> = {
   nameTooShort: "Name is too short. Enter your full name:",
   basketUpdated: "✅ Your upcoming delivery basket was updated!",
   subscriptionPaused: "✅ Subscription paused for {weeks} week(s). It will resume automatically.",
+  subscriptionCancelled: "✅ Subscription cancelled. You can enroll again anytime from the Grocery menu.",
   noActiveSubscription: "You have no active subscription to manage.",
   cannotEditBasket: "⏰ Basket edit window closed. Cutoff: {cutoff}",
   editBasketHeader: "✏️ *Edit basket* — next delivery: {date}",
@@ -143,7 +154,9 @@ const EN: Record<BotMessageKey, string> = {
   membershipChooseDayRecurring:
     "📅 *Which day every week?*\n\n1 Wednesday (Jumatano)\n2 Saturday (Jumamosi)\n\nReply with a number.",
   membershipBasketHint:
-    "🛒 Pick the items you want every time.\nReply with item *numbers*, then type *done*. ✅",
+    "🛒 Pick at least *12 different products* for membership (discount + delivery perks).\nReply with item *numbers*, then type *done*. ✅\n\nFewer items? Type *buy* for a one-time order instead.",
+  membershipBasketTooSmall:
+    "❌ Membership needs at least *12 different products* in your basket (you have {n}).\n\nShop *on-demand* instead — type *buy* or *menu*.",
   membershipNoPlans: "Membership is not available right now.",
   orderOnDemand: "On-demand",
   orderSubscription: "Subscription",
@@ -186,6 +199,11 @@ const EN: Record<BotMessageKey, string> = {
     "🛒 *Grocery*\nWhat would you like?\n\n1️⃣ Shop now (one-time order)\n2️⃣ Subscribe (weekly / monthly delivery)",
   restaurantHubTitle:
     "🍲 *Restaurant*\n\n1️⃣ Order now\n2️⃣ Join membership (meal reminders on WhatsApp)\n3️⃣ My membership",
+  restaurantAllWindowsClosed:
+    "⛔ *All order windows are closed right now.*\n\n🕒 Current time (EAT): *{time}*\n\n*Schedule:*\n{schedule}\n\n✅ Next window: *{nextLabel}* opens at *{nextTime}*\n🕒 Order during: {nextWindow} ({nextDelivers})",
+  restaurantSlotClosed:
+    "⛔ *{label}* — ordering is closed.\n\n🕒 Order window: {orderWindow} ({deliversFor})\n\n✅ Opens again at *{opensAt}*",
+  restaurantChooseSlot: "👉 Reply with a slot number.\n{slots}",
   restaurantMembershipChooseSlots:
     "🎫 *Restaurant membership*\nPick your meal times (one, two, or all three).\nReply with numbers, e.g. `1` or `1 3`:\n\n1. 🌅 Breakfast\n2. ☀️ Lunch\n3. 🌙 Dinner",
   restaurantMembershipAddressHint:
@@ -195,6 +213,10 @@ const EN: Record<BotMessageKey, string> = {
   restaurantMembershipActive: "You already have restaurant membership for: *{slots}*",
   restaurantMembershipNone: "You don't have restaurant membership yet. Choose *2* from the restaurant menu to join.",
   restaurantMembershipStatus: "🎫 *Your membership*\nStatus: *{status}*\nMeals: *{slots}*",
+  restaurantMembershipManageMenu:
+    "1. Pause 1 week\n2. Leave membership\n3. Order food now",
+  restaurantMembershipPausedBot: "✅ Membership paused for 1 week. Reminders resume automatically.",
+  restaurantMembershipLeft: "✅ You left restaurant membership. You can join again from the restaurant menu.",
   restaurantMembershipFailed: "Could not complete membership. Try again or contact support.",
   groceryHubOnDemand: "Shop now",
   groceryHubSubscribe: "Subscribe",
@@ -205,6 +227,8 @@ const EN: Record<BotMessageKey, string> = {
   groceryManagePause: "Pause 1 week",
   groceryManageShop: "Shop more (one-time)",
   groceryManagePay: "Pay now",
+  groceryManageResumePay: "Get payment link",
+  groceryManageCancel: "Cancel subscription",
   grocerySubscribeTitle:
     "📦 *Subscribe*\n\n1️⃣ Pick a ready-made package\n2️⃣ Build your own basket (save up to 5%)",
   grocerySubscribePackage: "Ready package",
@@ -241,6 +265,7 @@ const SW: Record<BotMessageKey, string> = {
   nameTooShort: "Jina ni fupi sana. Andika jina lako kamili:",
   basketUpdated: "✅ Kikapu cha utoaji ujao kimesasishwa!",
   subscriptionPaused: "✅ Usajili umesitishwa kwa wiki {weeks}. Utarejeshwa kiotomatiki.",
+  subscriptionCancelled: "✅ Usajili umefutwa. Unaweza kujiunga tena wakati wowote kutoka menyu ya Grocery.",
   noActiveSubscription: "Huna usajili unaoweza kusimamia.",
   cannotEditBasket: "⏰ Muda wa kubadilisha kikapu umepita. Cutoff: {cutoff}",
   editBasketHeader: "✏️ *Hariri kikapu* — utoaji: {date}",
@@ -266,7 +291,9 @@ const SW: Record<BotMessageKey, string> = {
   membershipChooseDayRecurring:
     "📅 *Siku gani kila wiki?*\n\n1 Jumatano\n2 Jumamosi\n\nAndika namba.",
   membershipBasketHint:
-    "🛒 Chagua bidhaa unazotaka kila mara.\nAndika *namba* za bidhaa, kisha *maliza*. ✅",
+    "🛒 Chagua angalau *bidhaa 12 tofauti* kwa uanachama (punguzo + usafiri).\nAndika *namba* za bidhaa, kisha *maliza*. ✅\n\nVitu vichache? Andika *nunua* kwa oda ya kawaida.",
+  membershipBasketTooSmall:
+    "❌ Uanachama unahitaji angalau *bidhaa 12 tofauti* (una {n}).\n\nNunua *kwa oda ya kawaida* — andika *nunua* au *menyu*.",
   membershipNoPlans: "Uanachama haupatikani kwa sasa.",
   orderOnDemand: "Papo kwa papo",
   orderSubscription: "Usajili",
@@ -309,6 +336,11 @@ const SW: Record<BotMessageKey, string> = {
     "🛒 *Grocery*\nUnataka nini?\n\n1️⃣ Nunua leo (mara moja)\n2️⃣ Jiunge (utoaji kila wiki/mwezi)",
   restaurantHubTitle:
     "🍲 *Restaurant*\n\n1️⃣ Agiza sasa\n2️⃣ Jiunge uanachama (ukumbusho wa WhatsApp)\n3️⃣ Uanachama wangu",
+  restaurantAllWindowsClosed:
+    "⛔ *Dirisha zote za ku-order zimefungwa kwa sasa.*\n\n🕒 Saa sasa (EAT): *{time}*\n\n*Ratiba ya dirisha:*\n{schedule}\n\n✅ Dirisha linalofuata: *{nextLabel}* litafunguliwa saa *{nextTime}*\n🕒 Tuma oda: {nextWindow} ({nextDelivers})",
+  restaurantSlotClosed:
+    "⛔ *{label}* — dirisha limefungwa.\n\n🕒 Oda: {orderWindow} ({deliversFor})\n\n✅ Litafunguliwa tena saa *{opensAt}*",
+  restaurantChooseSlot: "👉 Chagua namba ya dirisha.\n{slots}",
   restaurantMembershipChooseSlots:
     "🎫 *Uanachama wa Restaurant*\nChagua muda/muda (moja, mbili, au zote tatu).\nAndika namba, mf. `1` au `1 3`:\n\n1. 🌅 Asubuhi\n2. ☀️ Mchana\n3. 🌙 Usiku",
   restaurantMembershipAddressHint:
@@ -318,6 +350,10 @@ const SW: Record<BotMessageKey, string> = {
   restaurantMembershipActive: "Tayari una uanachama wa restaurant kwa: *{slots}*",
   restaurantMembershipNone: "Bado hujajiunga na uanachama. Chagua *2* kwenye menyu ya restaurant.",
   restaurantMembershipStatus: "🎫 *Uanachama wako*\nHali: *{status}*\nMuda: *{slots}*",
+  restaurantMembershipManageMenu:
+    "1. Sitisha wiki 1\n2. Ondoka uanachama\n3. Order chakula sasa",
+  restaurantMembershipPausedBot: "✅ Uanachama umesitishwa kwa wiki 1. Ukumbusho utaendelea kiotomatiki.",
+  restaurantMembershipLeft: "✅ Umeondoka uanachama wa restaurant. Unaweza kujiunga tena kutoka menyu ya restaurant.",
   restaurantMembershipFailed: "Imeshindikana kujiunga. Jaribu tena au wasiliana nasi.",
   groceryHubOnDemand: "Nunua leo",
   groceryHubSubscribe: "Jiunge",
@@ -328,6 +364,8 @@ const SW: Record<BotMessageKey, string> = {
   groceryManagePause: "Sitisha wiki 1",
   groceryManageShop: "Nunua zaidi (mara moja)",
   groceryManagePay: "Lipa sasa",
+  groceryManageResumePay: "Pata kiungo cha malipo",
+  groceryManageCancel: "Futa usajili",
   grocerySubscribeTitle:
     "📦 *Jiunge*\n\n1️⃣ Chagua kifurushi kilichotayarishwa\n2️⃣ Jenga kikapu chako (okoa hadi 5%)",
   grocerySubscribePackage: "Kifurushi tayari",

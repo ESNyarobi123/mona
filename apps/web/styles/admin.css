@@ -8265,6 +8265,45 @@ a.admin-order-id:hover {
   color: var(--admin-muted);
 }
 
+.admin-reports-sheet-detail__delivery {
+  margin-top: 0.65rem;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(42, 63, 102, 0.06);
+  border-left: 3px solid var(--admin-grocery);
+}
+
+.admin-reports-sheet-detail__delivery p {
+  margin: 0;
+}
+
+.admin-reports-sheet-detail__delivery p + p {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--admin-border);
+}
+
+.admin-reports-sheet-detail__label {
+  display: block;
+  margin-bottom: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--admin-grocery);
+}
+
+.admin-market-route-extra {
+  margin: 0.25rem 0 0;
+  font-size: 0.78rem;
+  color: var(--admin-muted);
+}
+
+.admin-market-route-extra span {
+  font-weight: 700;
+  color: var(--admin-grocery);
+}
+
 .admin-reports-zone-count {
   font-size: 0.75rem;
   font-weight: 600;

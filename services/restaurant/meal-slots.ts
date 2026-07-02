@@ -73,6 +73,80 @@ export function isSlotOpen(window: MealSlotWindow, date = new Date(), timeZone =
   return now >= start && now < end;
 }
 
+/** Minutes until this window opens; 0 when already open. */
+export function minutesUntilSlotOpens(window: MealSlotWindow, nowMinutes: number): number {
+  const start = window.startHour * 60 + window.startMinute;
+
+  if (window.endsAtMidnight) {
+    if (nowMinutes >= start) return 0;
+    return start - nowMinutes;
+  }
+
+  const end = window.endHour * 60 + window.endMinute;
+  if (nowMinutes >= start && nowMinutes < end) return 0;
+  if (nowMinutes < start) return start - nowMinutes;
+  return 24 * 60 - nowMinutes + start;
+}
+
+function minutesToClock(minutes: number) {
+  const normalized = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60);
+  return `${pad2(Math.floor(normalized / 60))}:${pad2(normalized % 60)}`;
+}
+
+export function getOpensAtTime(
+  window: MealSlotWindow,
+  date = new Date(),
+  timeZone = TZ_EAT
+): string | null {
+  const nowMinutes = getLocalMinutes(date, timeZone);
+  const minutes = minutesUntilSlotOpens(window, nowMinutes);
+  if (minutes === 0) return null;
+  return minutesToClock(nowMinutes + minutes);
+}
+
+export type NextMealSlotOpening = {
+  slot: MealSlot;
+  label: string;
+  emoji: string;
+  orderWindow: string;
+  deliversFor: string;
+  opensAtTime: string;
+  opensInMinutes: number;
+};
+
+export function getNextMealSlotOpening(
+  windows: MealSlotWindow[],
+  locale: "en" | "sw" = "en",
+  now = new Date(),
+  timeZone = TZ_EAT
+): NextMealSlotOpening | null {
+  const nowMinutes = getLocalMinutes(now, timeZone);
+  let best: { window: MealSlotWindow; minutes: number } | null = null;
+
+  for (const window of windows) {
+    const minutes = minutesUntilSlotOpens(window, nowMinutes);
+    if (minutes === 0) return null;
+    if (!best || minutes < best.minutes) {
+      best = { window, minutes };
+    }
+  }
+
+  if (!best) return null;
+
+  const meta = SLOT_LABELS[best.window.slot];
+  const delivers = DELIVERS_FOR[best.window.slot];
+
+  return {
+    slot: best.window.slot,
+    label: locale === "sw" ? meta.sw : meta.en,
+    emoji: meta.emoji,
+    orderWindow: formatOrderWindow(best.window),
+    deliversFor: locale === "sw" ? delivers.sw : delivers.en,
+    opensAtTime: minutesToClock(nowMinutes + best.minutes),
+    opensInMinutes: best.minutes,
+  };
+}
+
 export function buildMealSlotDefinitions(
   windows: MealSlotWindow[],
   locale: "en" | "sw" = "en",
@@ -82,6 +156,7 @@ export function buildMealSlotDefinitions(
     const meta = SLOT_LABELS[window.slot];
     const delivers = DELIVERS_FOR[window.slot];
     const orderWindow = formatOrderWindow(window);
+    const open = isSlotOpen(window, now);
     return {
       slot: window.slot,
       label: locale === "sw" ? meta.sw : meta.en,
@@ -89,7 +164,8 @@ export function buildMealSlotDefinitions(
       hours: orderWindow,
       orderWindow,
       deliversFor: locale === "sw" ? delivers.sw : delivers.en,
-      status: isSlotOpen(window, now) ? "OPEN" : "CLOSED",
+      status: open ? "OPEN" : "CLOSED",
+      opensAtTime: open ? null : getOpensAtTime(window, now),
     };
   });
 }
@@ -113,6 +189,15 @@ export type MealSlotDefinition = {
   orderWindow: string;
   deliversFor: string;
   status: MealSlotStatus;
+  /** EAT clock time when this window opens next (only when status is CLOSED). */
+  opensAtTime: string | null;
+};
+
+export type MealSlotsPayload = {
+  slots: MealSlotDefinition[];
+  allClosed: boolean;
+  nextOpen: NextMealSlotOpening | null;
+  timeDisplay: string;
 };
 
 export async function getMealSlotDefinitions(
@@ -121,6 +206,22 @@ export async function getMealSlotDefinitions(
 ): Promise<MealSlotDefinition[]> {
   const windows = await getMealSlotWindows();
   return buildMealSlotDefinitions(windows, locale, now);
+}
+
+export async function getMealSlotsPayload(
+  locale: "en" | "sw" = "en",
+  now = new Date()
+): Promise<MealSlotsPayload> {
+  const windows = await getMealSlotWindows();
+  const slots = buildMealSlotDefinitions(windows, locale, now);
+  const allClosed = slots.every((slot) => slot.status === "CLOSED");
+  const { display: timeDisplay } = getLocalTimeParts(now);
+  return {
+    slots,
+    allClosed,
+    nextOpen: allClosed ? getNextMealSlotOpening(windows, locale, now) : null,
+    timeDisplay,
+  };
 }
 
 export async function assertMealSlotOpen(slot: MealSlot, now = new Date()) {

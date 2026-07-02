@@ -62,7 +62,13 @@ export type GroceryHome = {
     nextRunAt: string | null;
     address: string;
   } | null;
-  pendingPayment: { orderId?: string; intentId?: string; paymentId?: string; amount: string } | null;
+  pendingPayment: {
+    orderId?: string;
+    intentId?: string;
+    paymentId?: string;
+    amount: string;
+    expired?: boolean;
+  } | null;
   canEnroll: boolean;
 };
 
@@ -152,6 +158,30 @@ export const api = {
       body: JSON.stringify({ weeks }),
     }),
 
+  pauseRestaurantMembership: (id: string, weeks = 1) =>
+    request<unknown>(`/restaurant/membership/${id}/pause`, {
+      method: "POST",
+      body: JSON.stringify({ weeks }),
+    }),
+
+  cancelRestaurantMembership: (id: string) =>
+    request<unknown>(`/restaurant/membership/${id}/cancel`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+
+  resumeSubscriptionPayment: (id: string) =>
+    request<{ status: "ready"; payId: string; kind: "ORDER" | "CHECKOUT_INTENT"; amount: string }>(
+      `/grocery/subscriptions/${id}/resume-payment`,
+      { method: "POST", body: JSON.stringify({}) }
+    ),
+
+  cancelPendingSubscription: (id: string) =>
+    request<unknown>(`/grocery/subscriptions/${id}/cancel-pending`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    }),
+
   updateSubscriptionBasket: (id: string, items: { productId: string; quantity: number }[]) =>
     request<unknown>(`/grocery/subscriptions/${id}/basket`, {
       method: "PATCH",
@@ -169,16 +199,29 @@ export const api = {
     request<MenuItem[]>(`/restaurant/menu?slot=${slot}`),
 
   listSlots: (locale: "en" | "sw" = "en") =>
-    request<
-      Array<{
+    request<{
+      slots: Array<{
         slot: string;
         label: string;
+        emoji: string;
         hours: string;
         orderWindow: string;
         deliversFor: string;
         status: "OPEN" | "CLOSED";
-      }>
-    >(`/restaurant/slots?locale=${locale}`),
+        opensAtTime: string | null;
+      }>;
+      allClosed: boolean;
+      nextOpen: {
+        slot: string;
+        label: string;
+        emoji: string;
+        orderWindow: string;
+        deliversFor: string;
+        opensAtTime: string;
+        opensInMinutes: number;
+      } | null;
+      timeDisplay: string;
+    }>(`/restaurant/slots?locale=${locale}`),
 
   createOrder: (body: {
     userId: string;

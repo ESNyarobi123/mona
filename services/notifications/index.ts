@@ -152,7 +152,7 @@ export async function notifyCustomerPayOnDeliveryRejected(params: {
   return notifyCustomer(
     params.phone,
     `❌ Ombi lako la kulipia ukifika #${shortId(params.orderId)} limekataliwa.\n` +
-      `Tafadhali wasiliana nasi au jaribu kulipa sasa.`
+      `Unaweza *kulipa sasa* au *kufuta oda* kwenye akaunti yako — huwezi kuomba kulipia baadaye tena kwa oda hii.`
   );
 }
 
@@ -218,8 +218,8 @@ export async function notifyRestaurantMembershipSlotOpen(params: {
       : "Pick what you'd like to eat for this meal:";
   const footer =
     locale === "sw"
-      ? "Andika *namba* ya chakula (mf. `1` au `2 x2`), kisha *maliza* ✅"
-      : "Reply with the *item number* (e.g. `1` or `2 x2`), then *done* ✅";
+      ? "Andika *namba* ya chakula (mf. `1` au `2 x2`), kisha *maliza* ✅\nAu order kwenye tovuti yetu."
+      : "Reply with the *item number* (e.g. `1` or `2 x2`), then *done* ✅\nOr order on our website.";
 
   const text = `${title}\n\n${intro}\n\n${params.menuLines}\n\n${footer}`;
 

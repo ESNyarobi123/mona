@@ -1,5 +1,5 @@
 import { prisma, type Prisma } from "@monana/db";
-import { genOrderRef, normalizePaymentProofReference, paginatedResult, paymentReferenceDuplicateMessage, needsPayOnDeliveryApproval, type PaginationParams } from "@monana/utils";
+import { genOrderRef, normalizePaymentProofReference, paginatedResult, paymentReferenceDuplicateMessage, paymentReferenceInvalidMessage, needsPayOnDeliveryApproval, type PaginationParams } from "@monana/utils";
 
 const PROOF_REFERENCE_STATUSES = ["AWAITING_CONFIRMATION", "PAID", "REFUNDED"] as const;
 
@@ -60,9 +60,6 @@ export async function createPaymentRequest(orderId: string) {
 
 export async function submitManualPayment(paymentId: string, reference: string) {
   const normalized = normalizePaymentProofReference(reference);
-  if (!normalized) {
-    throw new Error("Andika reference sahihi ya malipo (namba kutoka M-Pesa au SMS).");
-  }
 
   return prisma.$transaction(async (tx) => {
     const payment = await tx.payment.findUnique({
@@ -70,6 +67,10 @@ export async function submitManualPayment(paymentId: string, reference: string) 
       include: { user: { select: { locale: true } } },
     });
     if (!payment) throw new Error("Malipo hayapatikani");
+    if (!normalized) {
+      const locale = payment.user?.locale === "en" ? "en" : "sw";
+      throw new Error(paymentReferenceInvalidMessage(locale));
+    }
     if (payment.status !== "PENDING") {
       throw new Error(`Malipo tayari ${payment.status}`);
     }
@@ -148,7 +149,10 @@ export async function failPayment(paymentId: string) {
   if (existing.order.paymentTiming === "PAY_ON_DELIVERY" && needsPayOnDeliveryApproval(existing.order)) {
     await prisma.order.update({
       where: { id: payment.orderId },
-      data: { status: "CANCELLED" },
+      data: {
+        paymentTiming: "PAY_NOW",
+        payOnDeliveryRejectedAt: new Date(),
+      },
     });
   }
 
@@ -158,9 +162,6 @@ export async function failPayment(paymentId: string) {
 /** Customer requests payment after receiving cargo (pay-on-delivery orders). */
 export async function requestPayOnDeliveryPayment(orderId: string, reference: string) {
   const normalized = normalizePaymentProofReference(reference);
-  if (!normalized) {
-    throw new Error("Andika reference sahihi ya malipo (namba kutoka M-Pesa au SMS).");
-  }
 
   return prisma.$transaction(async (tx) => {
     const order = await tx.order.findUnique({
@@ -168,6 +169,10 @@ export async function requestPayOnDeliveryPayment(orderId: string, reference: st
       include: { payment: true, user: { select: { locale: true } } },
     });
     if (!order) throw new Error("Oda haipatikani");
+    if (!normalized) {
+      const locale = order.user?.locale === "en" ? "en" : "sw";
+      throw new Error(paymentReferenceInvalidMessage(locale));
+    }
     if (order.paymentTiming !== "PAY_ON_DELIVERY") {
       throw new Error("Oda hii si ya kulipia ukifika mzigo");
     }

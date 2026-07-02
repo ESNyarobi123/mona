@@ -10,6 +10,9 @@ export function getRestaurantMenu(slot: "BREAKFAST" | "LUNCH" | "DINNER") {
 
 type Reply = (text: string) => Promise<void>;
 
+type SlotRow = Awaited<ReturnType<typeof api.listSlots>>["slots"][number];
+type SlotsPayload = Awaited<ReturnType<typeof api.listSlots>>;
+
 const SLOT_KEYS: Record<string, "BREAKFAST" | "LUNCH" | "DINNER"> = {
   "1": "BREAKFAST",
   "2": "LUNCH",
@@ -18,6 +21,61 @@ const SLOT_KEYS: Record<string, "BREAKFAST" | "LUNCH" | "DINNER"> = {
 
 function withBack(phone: string, body: string): string {
   return `${body}\n\n${msg(phone, "backHint")}`;
+}
+
+export function formatSlotPickerLines(slots: SlotRow[], locale: "en" | "sw") {
+  return slots
+    .map((s, i) => {
+      const status =
+        s.status === "OPEN"
+          ? locale === "sw"
+            ? "🟢 Wazi"
+            : "🟢 Open"
+          : locale === "sw"
+            ? "🔴 Imefungwa"
+            : "🔴 Closed";
+      const opensHint =
+        s.status === "CLOSED" && s.opensAtTime
+          ? locale === "sw"
+            ? ` · inafunguka ${s.opensAtTime}`
+            : ` · opens ${s.opensAtTime}`
+          : "";
+      return `${i + 1}. ${s.label} — ${s.deliversFor}\n   ${locale === "sw" ? "Oda" : "Order"}: ${s.orderWindow} · ${status}${opensHint}`;
+    })
+    .join("\n");
+}
+
+function formatRestaurantSchedule(slots: SlotRow[]) {
+  return slots
+    .map((s) => `• ${s.emoji} ${s.label}: ${s.orderWindow} (${s.deliversFor})`)
+    .join("\n");
+}
+
+export function formatAllWindowsClosedMessage(locale: "en" | "sw", payload: SlotsPayload) {
+  const { slots, nextOpen, timeDisplay } = payload;
+  if (!nextOpen) {
+    const schedule = formatRestaurantSchedule(slots);
+    return locale === "sw"
+      ? `⛔ *Dirisha zote za ku-order zimefungwa kwa sasa.*\n\n🕒 Saa sasa (EAT): *${timeDisplay}*\n\n*Ratiba ya dirisha:*\n${schedule}`
+      : `⛔ *All order windows are closed right now.*\n\n🕒 Current time (EAT): *${timeDisplay}*\n\n*Schedule:*\n${schedule}`;
+  }
+  return botMessage(locale, "restaurantAllWindowsClosed", {
+    time: timeDisplay,
+    schedule: formatRestaurantSchedule(slots),
+    nextLabel: nextOpen.label,
+    nextTime: nextOpen.opensAtTime,
+    nextWindow: nextOpen.orderWindow,
+    nextDelivers: nextOpen.deliversFor,
+  });
+}
+
+export function formatSlotClosedMessage(locale: "en" | "sw", slot: SlotRow) {
+  return botMessage(locale, "restaurantSlotClosed", {
+    label: slot.label,
+    orderWindow: slot.orderWindow,
+    deliversFor: slot.deliversFor,
+    opensAt: slot.opensAtTime ?? "—",
+  });
 }
 
 export async function showRestaurantHub(phone: string, reply: Reply) {
@@ -29,23 +87,18 @@ export async function showRestaurantHub(phone: string, reply: Reply) {
 export async function handleRestaurantHub(phone: string, choice: string, reply: Reply) {
   const locale = sessionLocale(phone);
   if (choice === "1") {
-    const slots = await api.listSlots(locale);
+    const payload = await api.listSlots(locale);
+    if (payload.allClosed) {
+      patchSession(phone, "CHOOSING_RESTAURANT_HUB", { module: "RESTAURANT", cart: [] });
+      return reply(withBack(phone, formatAllWindowsClosedMessage(locale, payload)));
+    }
     patchSession(phone, "CHOOSING_SLOT", { module: "RESTAURANT", cart: [] });
-    const lines = slots.map((s, i) => {
-      const status =
-        s.status === "OPEN"
-          ? locale === "sw"
-            ? "🟢 Wazi"
-            : "🟢 Open"
-          : locale === "sw"
-            ? "🔴 Imefungwa"
-            : "🔴 Closed";
-      return `${i + 1}. ${s.label} — ${s.deliversFor}\n   ${locale === "sw" ? "Oda" : "Order"}: ${s.orderWindow} · ${status}`;
-    });
     return reply(
       withBack(
         phone,
-        `${locale === "sw" ? "👉 Chagua namba ya dirisha." : "👉 Reply with a slot number."}\n${lines.join("\n")}`
+        botMessage(locale, "restaurantChooseSlot", {
+          slots: formatSlotPickerLines(payload.slots, locale),
+        })
       )
     );
   }
@@ -62,7 +115,7 @@ export async function startRestaurantMembership(phone: string, reply: Reply) {
   const existing = await api.getRestaurantMembership(userId).catch(() => []);
   const active = existing.find((s) => s.status === "ACTIVE" || s.status === "PAUSED");
   if (active) {
-    return reply(botMessage(locale, "restaurantMembershipActive", { slots: active.mealSlots.join(", ") }));
+    return showRestaurantMembershipStatus(phone, reply);
   }
 
   patchSession(phone, "CHOOSING_RESTAURANT_MEMBERSHIP_SLOTS", { selectedMealSlots: [] });
@@ -86,12 +139,56 @@ export async function showRestaurantMembershipStatus(phone: string, reply: Reply
     })
     .join(", ");
 
+  patchSession(phone, "MANAGING_RESTAURANT_MEMBERSHIP", {
+    restaurantMembershipId: active.id,
+  });
+
   return reply(
-    botMessage(locale, "restaurantMembershipStatus", {
+    `${botMessage(locale, "restaurantMembershipStatus", {
       status: active.status,
       slots: slotLabels,
-    })
+    })}\n\n${botMessage(locale, "restaurantMembershipManageMenu")}\n\n${msg(phone, "backHint")}`
   );
+}
+
+export async function handleRestaurantMembershipManage(phone: string, choice: string, reply: Reply) {
+  const locale = sessionLocale(phone);
+  const session = getSession(phone);
+  const membershipId = session.data.restaurantMembershipId;
+  if (!membershipId) return reply(msg(phone, "fallback"));
+
+  if (choice === "1") {
+    try {
+      await api.pauseRestaurantMembership(membershipId, 1);
+      patchSession(phone, "MENU", { restaurantMembershipId: undefined });
+      return reply(botMessage(locale, "restaurantMembershipPausedBot"));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : botMessage(locale, "restaurantMembershipFailed");
+      return reply(`❌ ${message}`);
+    }
+  }
+
+  if (choice === "2") {
+    try {
+      await api.cancelRestaurantMembership(membershipId);
+      patchSession(phone, "MENU", { restaurantMembershipId: undefined });
+      return reply(botMessage(locale, "restaurantMembershipLeft"));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : botMessage(locale, "restaurantMembershipFailed");
+      return reply(`❌ ${message}`);
+    }
+  }
+
+  if (choice === "3") {
+    patchSession(phone, "CHOOSING_RESTAURANT_HUB", {
+      module: "RESTAURANT",
+      cart: [],
+      restaurantMembershipId: undefined,
+    });
+    return handleRestaurantHub(phone, "1", reply);
+  }
+
+  return showRestaurantMembershipStatus(phone, reply);
 }
 
 function parseSlotChoices(input: string): ("BREAKFAST" | "LUNCH" | "DINNER")[] {

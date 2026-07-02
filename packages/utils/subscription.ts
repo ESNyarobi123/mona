@@ -80,6 +80,35 @@ export const MEMBERSHIP_PLANS = {
 
 export const MAX_MEMBERSHIP_DISCOUNT_PERCENT = 5;
 
+/** Minimum different products in a grocery membership basket (discount / free delivery). */
+export const MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS = 12;
+
+export function countDistinctBasketProducts(
+  basket: { productId: string; quantity: number }[]
+): number {
+  return new Set(basket.filter((b) => b.quantity > 0).map((b) => b.productId)).size;
+}
+
+export function groceryMembershipBasketError(
+  basket: { productId: string; quantity: number }[],
+  locale: AppLocale = "en"
+): string | null {
+  const count = countDistinctBasketProducts(basket);
+  if (count >= MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS) return null;
+  const min = MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS;
+  return locale === "sw"
+    ? `Uanachama unahitaji angalau bidhaa ${min} tofauti kwenye kikapu (una ${count}). Nunua kwa oda ya kawaida ikiwa huna hivyo.`
+    : `Membership requires at least ${min} different products in your basket (you have ${count}). Please shop on-demand instead.`;
+}
+
+export function assertGroceryMembershipBasketSize(
+  basket: { productId: string; quantity: number }[],
+  locale: AppLocale = "en"
+): void {
+  const message = groceryMembershipBasketError(basket, locale);
+  if (message) throw new Error(message);
+}
+
 /** @deprecated use groceryRecurringDeliveryDays or getUpcomingGroceryDeliverySlots */
 export function weeklyDeliveryDays(lang: AppLocale = "en") {
   return groceryRecurringDeliveryDays(lang);

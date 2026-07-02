@@ -33,11 +33,11 @@ export async function showGroceryHub(phone: string, reply: Reply) {
 
   const home = await api.getGroceryHome(userId, locale);
 
-  if (home.subscription?.status === "PENDING_PAYMENT" && home.pendingPayment) {
+  if (home.subscription?.status === "PENDING_PAYMENT") {
     patchSession(phone, "MANAGING_SUBSCRIPTION", {
       activeSubscriptionId: home.subscription.id,
-      pendingSubOrderId: home.pendingPayment.orderId,
-      intentId: home.pendingPayment.intentId,
+      pendingSubOrderId: home.pendingPayment?.orderId,
+      intentId: home.pendingPayment?.intentId,
     });
     return reply(buildManageMenu(phone, home, locale));
   }
@@ -67,9 +67,14 @@ function buildManageMenu(
     "",
   ];
 
-  if (home.pendingPayment) {
+  if (home.pendingPayment && !home.pendingPayment.expired) {
     lines.push(`1. ${botMessage(locale, "groceryManagePay")}`);
-    lines.push(`2. ${botMessage(locale, "groceryManageShop")}`);
+    lines.push(`2. ${botMessage(locale, "groceryManageCancel")}`);
+    lines.push(`3. ${botMessage(locale, "groceryManageShop")}`);
+  } else if (sub.status === "PENDING_PAYMENT") {
+    lines.push(`1. ${botMessage(locale, "groceryManageResumePay")}`);
+    lines.push(`2. ${botMessage(locale, "groceryManageCancel")}`);
+    lines.push(`3. ${botMessage(locale, "groceryManageShop")}`);
   } else {
     lines.push(`1. ${botMessage(locale, "groceryManageEdit")}`);
     lines.push(`2. ${botMessage(locale, "groceryManagePause")}`);
@@ -254,6 +259,64 @@ export async function handleManageSubscription(phone: string, choice: string, re
   if (!userId) return reply(msg(phone, "fallback"));
 
   const home = await api.getGroceryHome(userId, locale);
+  const subId = home.subscription?.id ?? session.data.activeSubscriptionId;
+
+  if (home.subscription?.status === "PENDING_PAYMENT" && subId) {
+    if (choice === "1") {
+      let intentId = home.pendingPayment?.intentId;
+      let orderId = home.pendingPayment?.orderId;
+      let amount = Number(home.pendingPayment?.amount ?? 0);
+
+      if (home.pendingPayment?.expired || (!intentId && !orderId)) {
+        const refreshed = await api.resumeSubscriptionPayment(subId);
+        if (refreshed.kind === "CHECKOUT_INTENT") {
+          intentId = refreshed.payId;
+        } else {
+          orderId = refreshed.payId;
+        }
+        amount = Number(refreshed.amount);
+      }
+
+      if (intentId) {
+        return sendPaymentRequest(
+          phone,
+          intentId,
+          amount,
+          reply,
+          botMessage(locale, "subscriptionPendingPay"),
+          { isIntent: true }
+        );
+      }
+      if (orderId) {
+        return sendPaymentRequest(
+          phone,
+          orderId,
+          amount,
+          reply,
+          botMessage(locale, "subscriptionPendingPay")
+        );
+      }
+    }
+
+    if (choice === "2") {
+      await api.cancelPendingSubscription(subId);
+      patchSession(phone, "MENU", {
+        locale: session.data.locale,
+        userId: session.data.userId,
+        userName: session.data.userName,
+        token: session.data.token,
+        botMenu: session.data.botMenu,
+        activeSubscriptionId: undefined,
+      });
+      return reply(botMessage(locale, "subscriptionCancelled"));
+    }
+
+    if (choice === "3") {
+      return startOnDemand(phone, reply);
+    }
+
+    return reply(buildManageMenu(phone, home, locale));
+  }
 
   if (home.pendingPayment && choice === "1") {
     const amount = Number(home.pendingPayment.amount);

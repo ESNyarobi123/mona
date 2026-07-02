@@ -3,10 +3,10 @@ import { botMessage } from "@monana/i18n";
 import {
   BOT_KEYWORDS,
   isPaidWithoutReference,
-  parseCustomerPaymentReference,
   matchPauseWeeks,
   matchesKeyword,
 } from "@monana/i18n";
+import { parseCustomerPaymentReference } from "@monana/utils";
 import {
   moduleLabel,
   formatPricePerUnit,
@@ -16,6 +16,8 @@ import {
   localeDateString,
   localeDateTimeString,
   canPayOnDeliveryOrder,
+  countDistinctBasketProducts,
+  MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS,
 } from "@monana/utils";
 import { getSession, patchSession, clearSession, sessionLocale, type AppLocale } from "../services/session.service";
 import { api } from "../services/api.service";
@@ -35,6 +37,10 @@ import {
   handleRestaurantHub,
   handleRestaurantMembershipSlots,
   handleRestaurantMembershipAddress,
+  handleRestaurantMembershipManage,
+  formatAllWindowsClosedMessage,
+  formatSlotClosedMessage,
+  formatSlotPickerLines,
 } from "./restaurant.handler";
 import { sendPaymentRequest, finishPaymentProof } from "./payment.handler";
 import { formatTZS, numberedList } from "../utils/formatter";
@@ -117,6 +123,8 @@ export async function handleMessage(incoming: IncomingMessage, reply: Reply): Pr
       return handleRestaurantMembershipSlots(phone, text, reply);
     case "ASK_RESTAURANT_MEMBERSHIP_ADDRESS":
       return handleRestaurantMembershipAddress(phone, text, reply);
+    case "MANAGING_RESTAURANT_MEMBERSHIP":
+      return handleRestaurantMembershipManage(phone, lower, reply);
     case "CHOOSING_GROCERY":
       return handleGroceryHub(phone, lower, reply);
     case "MANAGING_SUBSCRIPTION":
@@ -144,7 +152,6 @@ function withBack(phone: string, body: string): string {
  */
 async function handlePaymentFlowMessage(phone: string, text: string, reply: Reply) {
   const session = getSession(phone);
-  const locale = sessionLocale(phone);
 
   if (!session.data.paymentId && !session.data.intentId) {
     patchSession(phone, "MENU", {
@@ -158,7 +165,7 @@ async function handlePaymentFlowMessage(phone: string, text: string, reply: Repl
     return reply(msg(phone, "fallback"));
   }
 
-  const ref = parseCustomerPaymentReference(text, locale);
+  const ref = parseCustomerPaymentReference(text);
   if (ref) {
     return handlePaymentProof(phone, ref, reply);
   }
@@ -307,27 +314,28 @@ function orderTypeLabel(o: { module: string; orderType?: string | null }, locale
 
 async function handleSlotChoice(phone: string, choice: string, reply: Reply) {
   const locale = sessionLocale(phone);
-  const slots = await api.listSlots(locale);
+  const payload = await api.listSlots(locale);
+  const { slots } = payload;
+
+  if (payload.allClosed) {
+    patchSession(phone, "CHOOSING_RESTAURANT_HUB", { module: "RESTAURANT", cart: [] });
+    return reply(withBack(phone, formatAllWindowsClosedMessage(locale, payload)));
+  }
+
   const index = Number(choice) - 1;
   const slotEntry = slots[index];
   if (!slotEntry) {
-    const lines = slots.map((s, i) => `${i + 1}. ${s.label}`);
     return reply(
       withBack(
         phone,
-        `${locale === "sw" ? "👉 Chagua namba sahihi:" : "👉 Pick a valid number:"}\n${lines.join("\n")}`
+        botMessage(locale, "restaurantChooseSlot", {
+          slots: formatSlotPickerLines(slots, locale),
+        })
       )
     );
   }
   if (slotEntry.status === "CLOSED") {
-    return reply(
-      withBack(
-        phone,
-        locale === "sw"
-          ? `⛔ ${slotEntry.label} — dirisha limefungwa.\n🕒 Oda: ${slotEntry.orderWindow} (${slotEntry.deliversFor})`
-          : `⛔ ${slotEntry.label} — ordering is closed.\n🕒 Window: ${slotEntry.orderWindow} (${slotEntry.deliversFor})`
-      )
-    );
+    return reply(withBack(phone, formatSlotClosedMessage(locale, slotEntry)));
   }
   const slot = slotEntry.slot as "BREAKFAST" | "LUNCH" | "DINNER";
   const items = await api.listRestaurantMenu(slot);
@@ -409,6 +417,22 @@ async function handleChoosing(phone: string, input: string, reply: Reply) {
     if (!session.data.cart.length) return reply(msg(phone, "cartEmptyHint"));
     if (session.data.activeSubscriptionId) {
       return handleEditBasketFinish(phone, reply);
+    }
+    if (session.data.membershipMode && session.data.module === "GROCERY") {
+      const distinct = countDistinctBasketProducts(
+        session.data.cart
+          .filter((c) => c.productId)
+          .map((c) => ({ productId: c.productId!, quantity: c.quantity }))
+      );
+      if (distinct < MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS) {
+        return reply(
+          withBack(
+            phone,
+            botMessage(locale, "membershipBasketTooSmall", { n: String(distinct) }) +
+              `\n\n${msg(phone, "askMoreOrDone")}`
+          )
+        );
+      }
     }
     if (session.data.module === "GROCERY" && !session.data.membershipMode) {
       const catalog = await api.getOnDemandCatalog();

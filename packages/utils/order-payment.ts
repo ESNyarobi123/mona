@@ -3,6 +3,7 @@ export type OrderPaymentFields = {
   status: string;
   paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY" | string | null;
   submittedAt?: Date | string | null;
+  payOnDeliveryRejectedAt?: Date | string | null;
   payment?: { status: string } | null;
 };
 
@@ -10,12 +11,18 @@ export function isPayOnDeliveryOrder(order: OrderPaymentFields): boolean {
   return order.paymentTiming === "PAY_ON_DELIVERY";
 }
 
+/** Admin rejected pay-on-delivery — customer must pay now or cancel the order. */
+export function isPayOnDeliveryRejected(order: OrderPaymentFields): boolean {
+  return !!order.payOnDeliveryRejectedAt && order.status !== "CANCELLED";
+}
+
 /** Pay-on-delivery request sent but admin has not approved yet. */
 export function needsPayOnDeliveryApproval(order: OrderPaymentFields): boolean {
   return (
     isPayOnDeliveryOrder(order) &&
     !order.submittedAt &&
-    order.status !== "CANCELLED"
+    order.status !== "CANCELLED" &&
+    !order.payOnDeliveryRejectedAt
   );
 }
 
@@ -35,8 +42,14 @@ export function canCustomerPayOrder(order: OrderPaymentFields): boolean {
   if (order.payment?.status === "PAID" || order.payment?.status === "AWAITING_CONFIRMATION") {
     return false;
   }
+  if (isPayOnDeliveryRejected(order)) return true;
   if (isPayOnDeliveryOrder(order)) return canPayOnDeliveryOrder(order);
   return !order.payment || ["PENDING", "FAILED"].includes(order.payment.status);
+}
+
+/** Customer may dismiss a rejected pay-on-delivery order. */
+export function canCustomerCancelRejectedPayOnDelivery(order: OrderPaymentFields): boolean {
+  return isPayOnDeliveryRejected(order) && order.status === "PENDING";
 }
 
 /** Pay-on-delivery chosen but delivery has not started yet — block payment UI. */

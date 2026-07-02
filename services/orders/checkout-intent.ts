@@ -5,6 +5,7 @@ import {
   genOrderRef,
   normalizePaymentProofReference,
   paymentReferenceDuplicateMessage,
+  paymentReferenceInvalidMessage,
   validateGroceryScheduledFor,
 } from "@monana/utils";
 import { assertMealSlotOpen } from "../restaurant/meal-slots";
@@ -172,9 +173,6 @@ export async function getCheckoutIntent(intentId: string) {
 /** Create Order + Payment when customer submits M-Pesa / Lipa Namba reference. */
 export async function fulfillCheckoutIntent(intentId: string, customerReference: string) {
   const normalized = normalizePaymentProofReference(customerReference);
-  if (!normalized) {
-    throw new Error("Andika reference sahihi ya malipo (namba kutoka M-Pesa au SMS).");
-  }
 
   const result = await prisma.$transaction(async (tx) => {
     const intent = await tx.checkoutIntent.findUnique({
@@ -182,6 +180,10 @@ export async function fulfillCheckoutIntent(intentId: string, customerReference:
       include: { user: { select: { locale: true } } },
     });
     if (!intent) throw new Error("Checkout haipatikani");
+    if (!normalized) {
+      const locale = intent.user?.locale === "en" ? "en" : "sw";
+      throw new Error(paymentReferenceInvalidMessage(locale));
+    }
     assertIntentUsable(intent);
 
     const payload = intent.payload as CheckoutIntentPayload;

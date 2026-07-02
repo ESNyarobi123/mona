@@ -1,4 +1,5 @@
 import { botMessage } from "@monana/i18n";
+import { normalizePaymentProofReference, paymentReferenceInvalidMessage } from "@monana/utils";
 import { getSession, patchSession, sessionLocale } from "../services/session.service";
 import { api } from "../services/api.service";
 import { sendImageDataUrl } from "../connection/whatsapp";
@@ -65,9 +66,9 @@ export async function finishPaymentProof(phone: string, reference: string, reply
   };
 
   try {
-    const ref = reference.trim();
-    if (!ref || /^manual$/i.test(ref)) {
-      throw new Error(botMessage(locale, "paymentReferenceInvalid"));
+    const ref = normalizePaymentProofReference(reference);
+    if (!ref) {
+      throw new Error(paymentReferenceInvalidMessage(locale));
     }
     if (session.data.intentId) {
       await api.submitPayment({ intentId: session.data.intentId, reference: ref });

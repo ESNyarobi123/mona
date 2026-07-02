@@ -1,5 +1,5 @@
 import { prisma, type Channel, type SubscriptionFrequency } from "@monana/db";
-import { MEMBERSHIP_PLANS } from "@monana/utils";
+import { MEMBERSHIP_PLANS, assertGroceryMembershipBasketSize } from "@monana/utils";
 import {
   assertGroceryDeliveryDay,
   dayOfWeekInTz,
@@ -44,6 +44,7 @@ export async function enrollCustomerMembership(data: {
 
   parsePackageItems(data.defaultBasket);
   await resolveLineItemsWithTotal(data.defaultBasket);
+  assertGroceryMembershipBasketSize(data.defaultBasket, locale);
 
   const frequency: SubscriptionFrequency = data.plan;
   const planMeta = MEMBERSHIP_PLANS[data.plan];

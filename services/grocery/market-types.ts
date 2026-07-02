@@ -33,6 +33,7 @@ export type PackingSheet = {
   orderRef: string;
   customer: { id: string; name: string | null; phone: string };
   address: string;
+  note: string | null;
   zoneId: string | null;
   zoneName: string | null;
   orderType: string | null;
@@ -52,6 +53,7 @@ export type RouteStop = {
   orderRef: string;
   customer: { name: string | null; phone: string };
   address: string;
+  note: string | null;
   sequence: number;
   itemCount: number;
   total: number;

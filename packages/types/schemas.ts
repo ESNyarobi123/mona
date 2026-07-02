@@ -1,4 +1,18 @@
 import { z } from "zod";
+import { normalizePaymentProofReference } from "@monana/utils";
+
+const paymentReferenceField = z
+  .string()
+  .min(1, "Reference ya malipo ni lazima")
+  .superRefine((value, ctx) => {
+    if (!normalizePaymentProofReference(value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message:
+          "Reference si sahihi — tumia msimbo kutoka SMS ya M-Pesa / Tigo / Airtel / Halopesa (herufi na namba, kawaida 10–14).",
+      });
+    }
+  });
 
 // Shared zod schemas — backend is ONE; modules are RESTAURANT | GROCERY.
 
@@ -172,7 +186,7 @@ export const submitPaymentSchema = z
   .object({
     paymentId: z.string().min(1).optional(),
     intentId: z.string().min(1).optional(),
-    reference: z.string().min(1, "Reference ya malipo ni lazima"),
+    reference: paymentReferenceField,
   })
   .superRefine((data, ctx) => {
     if (!data.paymentId && !data.intentId) {
@@ -196,7 +210,7 @@ export const confirmPaymentSchema = z.object({
 });
 
 export const requestOrderPaymentSchema = z.object({
-  reference: z.string().min(1, "Reference ya malipo ni lazima"),
+  reference: paymentReferenceField,
 });
 
 export const platformSettingsSchema = z.object({
@@ -349,6 +363,26 @@ const defaultBasketSchema = z
   .array(z.object({ productId: z.string(), quantity: z.number().positive() }))
   .min(1, "Chagua angalau bidhaa moja kwenye kikapu chako cha msingi");
 
+const MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS = 12;
+
+function membershipBasketDistinctCount(basket: { productId: string; quantity: number }[]) {
+  return new Set(basket.filter((b) => b.quantity > 0).map((b) => b.productId)).size;
+}
+
+function refineGroceryMembershipBasketSize(
+  basket: { productId: string; quantity: number }[],
+  ctx: z.RefinementCtx
+) {
+  const count = membershipBasketDistinctCount(basket);
+  if (count < MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Uanachama unahitaji angalau bidhaa ${MIN_GROCERY_MEMBERSHIP_DISTINCT_PRODUCTS} tofauti kwenye kikapu (una ${count}). Nunua kwa oda ya kawaida.`,
+      path: ["defaultBasket"],
+    });
+  }
+}
+
 const groceryDayOfWeekSchema = z.coerce.number().int().refine((d) => d === 3 || d === 6, {
   message: "Chagua Jumatano au Jumamosi pekee",
 });
@@ -391,13 +425,18 @@ export const enrollMembershipSchema = z
         path: ["preferredDayOfWeek"],
       });
     }
+    refineGroceryMembershipBasketSize(data.defaultBasket, ctx);
   });
 
-export const membershipPreviewSchema = z.object({
-  plan: z.enum(["WEEKLY", "MONTHLY"]),
-  defaultBasket: defaultBasketSchema,
-  packageId: z.string().min(1).optional(),
-});
+export const membershipPreviewSchema = z
+  .object({
+    plan: z.enum(["WEEKLY", "MONTHLY"]),
+    defaultBasket: defaultBasketSchema,
+    packageId: z.string().min(1).optional(),
+  })
+  .superRefine((data, ctx) => {
+    refineGroceryMembershipBasketSize(data.defaultBasket, ctx);
+  });
 
 export const enrollRestaurantMembershipSchema = z.object({
   userId: z.string().min(1),
