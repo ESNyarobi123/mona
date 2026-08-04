@@ -171,9 +171,7 @@ export const updateCustomOrderSchema = z.object({
 
 /** Admin: send RFQ price for a Social Order (pay-before-cook, no COD). */
 export const sendSocialOrderQuoteSchema = z.object({
-  quotedPrice: z.coerce
-    .number({ invalid_type_error: "Weka bei" })
-    .positive("Bei lazima iwe zaidi ya 0"),
+  quotedPrice: z.coerce.number().positive("Bei lazima iwe zaidi ya 0"),
   adminNote: z.string().trim().max(1000).nullable().optional(),
 });
 

@@ -4,9 +4,10 @@ import {
   listCustomOrders,
   listUserCustomOrders,
 } from "@monana/restaurant";
-import { createCustomOrderSchema } from "@monana/types";
+import { createCustomOrderSchema, customOrderStatusSchema } from "@monana/types";
 import { parsePagination } from "@monana/utils";
 import { prisma } from "@monana/db";
+import { z } from "zod";
 import { handle, ok, parseBody } from "../../../../lib/api";
 import {
   ApiError,
@@ -16,6 +17,8 @@ import {
   requireSelfAdminOrBot,
 } from "../../../../lib/auth";
 import { notifyAdminCustomOrder } from "../../../../lib/whatsapp";
+
+type CustomOrderStatus = z.infer<typeof customOrderStatusSchema>;
 
 // GET /api/restaurant/social-orders?userId= | admin list | ?meta=lead-time
 export function GET(req: Request) {
@@ -34,11 +37,12 @@ export function GET(req: Request) {
     }
 
     requireAdmin(req);
-    const status = url.searchParams.get("status") as
-      | Parameters<typeof listCustomOrders>[0]["status"]
-      | null;
+    const statusRaw = url.searchParams.get("status");
+    const status: CustomOrderStatus | undefined = statusRaw
+      ? customOrderStatusSchema.parse(statusRaw)
+      : undefined;
     const q = url.searchParams.get("q") ?? undefined;
-    return ok(await listCustomOrders({ status: status ?? undefined, q }, pagination));
+    return ok(await listCustomOrders({ status, q }, pagination));
   });
 }
 

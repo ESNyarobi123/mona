@@ -37,7 +37,7 @@ export type CheckoutIntentLineItem = {
 
 export type CheckoutIntentPayload = {
   userId: string;
-  module: "RESTAURANT" | "GROCERY";
+  module: BusinessModule;
   channel: "WEB" | "WHATSAPP";
   address?: string;
   note?: string;

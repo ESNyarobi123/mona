@@ -6,12 +6,15 @@ import {
   listUserCateringRequests,
 } from "@monana/catering";
 import {
+  cateringRequestStatusSchema,
   createCateringCustomQuoteSchema,
   createCateringPackageBookingSchema,
 } from "@monana/types";
 import { parsePagination } from "@monana/utils";
 import { prisma } from "@monana/db";
 import { z } from "zod";
+
+type CateringRequestStatus = z.infer<typeof cateringRequestStatusSchema>;
 import { handle, ok, parseBody } from "../../../../lib/api";
 import {
   ApiError,
@@ -46,14 +49,15 @@ export function GET(req: Request) {
     }
 
     requireAdmin(req);
-    const status = url.searchParams.get("status") as
-      | Parameters<typeof listCateringRequests>[0]["status"]
-      | null;
+    const statusRaw = url.searchParams.get("status");
+    const status: CateringRequestStatus | undefined = statusRaw
+      ? cateringRequestStatusSchema.parse(statusRaw)
+      : undefined;
     const kind = url.searchParams.get("kind") as "PACKAGE" | "CUSTOM_QUOTE" | null;
     const q = url.searchParams.get("q") ?? undefined;
     return ok(
       await listCateringRequests(
-        { status: status ?? undefined, kind: kind ?? undefined, q },
+        { status, kind: kind ?? undefined, q },
         pagination
       )
     );
