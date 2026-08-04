@@ -14,8 +14,10 @@ const NAV_ITEMS = [
   { href: "/account/subscription", labelKey: "navSubscription" as const, icon: "🔄" },
   { href: "/restaurant/menu", labelKey: "navOrderFood" as const, icon: "🍽️" },
   { href: "/grocery/products", labelKey: "navShopGrocery" as const, icon: "🛍️" },
+  { href: "/catering", labelKey: "navCatering" as const, icon: "🍽️", exact: true as const },
   { href: "/restaurant/orders", labelKey: "navRestOrders" as const, icon: "🍲" },
   { href: "/grocery/orders", labelKey: "navGrocOrders" as const, icon: "🛒" },
+  { href: "/catering/requests", labelKey: "navCateringOrders" as const, icon: "🥂" },
   { href: "/wallet", labelKey: "navOverview" as const, icon: "💳" },
   { href: "/profile", labelKey: "navProfile" as const, icon: "👤" },
   { href: "/support", labelKey: "navSupport" as const, icon: "💬" },
@@ -40,6 +42,8 @@ function currentNavLabel(pathname: string, t: (key: CustomerMessageKey) => strin
   if (pathname.startsWith("/grocery/packages")) return t("packages");
   if (pathname.startsWith("/grocery/products")) return t("shopNav");
   if (pathname.startsWith("/grocery")) return t("navGrocery");
+  if (pathname.startsWith("/catering/requests")) return t("navCateringOrders");
+  if (pathname.startsWith("/catering")) return t("navCatering");
   if (pathname.startsWith("/restaurant/orders")) return t("navRestOrders");
   if (pathname.startsWith("/grocery/orders")) return t("navGrocOrders");
   if (pathname.startsWith("/support")) return t("navSupport");

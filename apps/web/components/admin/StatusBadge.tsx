@@ -3,6 +3,11 @@ const MAP: Record<string, string> = {
   AWAITING_CONFIRMATION: "pending",
   CONFIRMED: "confirmed",
   PREPARING: "confirmed",
+  QUOTED: "pending",
+  ACCEPTED: "confirmed",
+  READY: "paid",
+  COMPLETED: "paid",
+  REJECTED: "cancelled",
   PAID: "paid",
   DELIVERED: "paid",
   CANCELLED: "cancelled",
@@ -12,6 +17,7 @@ const MAP: Record<string, string> = {
   PENDING_PAYMENT: "pending",
   RESTAURANT: "restaurant",
   GROCERY: "grocery",
+  CATERING: "restaurant",
 };
 
 export function StatusBadge({ status }: { status: string }) {

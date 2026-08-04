@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "../../lib/admin-api";
 import { HotProductsRail } from "./HotProductsRail";
+import { CustomOrderCta } from "./CustomOrderCta";
 import { addToCart, setRestaurantSlot } from "../../lib/cart";
 import { formatMoney, toNumber, UNIT_LABELS } from "../../lib/format";
 import { tr, slotStatusLabel } from "../../lib/customer-i18n";
@@ -157,6 +158,8 @@ export function RestaurantMenuView() {
           )}
         </p>
       ) : null}
+
+      <CustomOrderCta compact />
 
       {hot.length > 0 ? (
         <HotProductsRail

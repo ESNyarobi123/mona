@@ -154,3 +154,21 @@ export {
   assertCanEnrollRestaurantMembership,
 } from "./membership";
 export { processRestaurantSlotReminders } from "./membership-notify";
+export {
+  CUSTOM_ORDER_MIN_LEAD_HOURS,
+  CUSTOM_ORDER_MIN_LEAD_MS,
+  SOCIAL_ORDER_LABEL,
+  createCustomOrder,
+  getCustomOrderById,
+  getCustomOrderByOrderId,
+  listUserCustomOrders,
+  listCustomOrders,
+  sendSocialOrderQuote,
+  markSocialOrderPaidAndStartKitchen,
+  updateCustomOrderStatus,
+  cancelCustomOrder,
+  assertCustomOrderLeadTime,
+  inferMealSlotFromRequestedFor,
+  customOrderLeadTimeInfo,
+  type CreateCustomOrderInput,
+} from "./custom-orders";

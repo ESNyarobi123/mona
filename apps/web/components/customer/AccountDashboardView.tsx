@@ -71,6 +71,7 @@ function itemsPreview(items: OrderItem[] | undefined) {
 const MODULE_META = {
   RESTAURANT: { icon: "🍲", accent: "navy" as const },
   GROCERY: { icon: "🛒", accent: "orange" as const },
+  CATERING: { icon: "🍽️", accent: "navy" as const },
 };
 
 const STATUS_CLASS: Record<string, string> = {
@@ -151,6 +152,9 @@ export function AccountDashboardView() {
           <Link href="/grocery" className="landing-btn landing-btn--orange">
             {t("shopGrocery")}
           </Link>
+          <Link href="/catering" className="landing-btn landing-btn--navy">
+            {t("planCatering")}
+          </Link>
         </div>
       </header>
 
@@ -230,7 +234,12 @@ export function AccountDashboardView() {
                   const slotLabel = o.mealSlot ? SLOT_I18N[o.mealSlot]?.[locale] : null;
                   const needsPay = canCustomerPayOrder(o);
                   const statusLabel = orderStatusLabel(locale, o.status);
-                  const moduleLabel = o.module === "RESTAURANT" ? t("navRestOrders") : t("navGrocOrders");
+                  const moduleLabel =
+                    o.module === "RESTAURANT"
+                      ? t("navRestOrders")
+                      : o.module === "CATERING"
+                        ? t("navCateringOrders")
+                        : t("navGrocOrders");
 
                   return (
                     <li key={o.id} className="account-recent-item">

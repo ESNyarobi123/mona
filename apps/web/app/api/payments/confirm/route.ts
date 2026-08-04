@@ -1,6 +1,8 @@
 import { confirmPaymentSchema } from "@monana/types";
 import { confirmPayment, failPayment, getPayment } from "@monana/payment";
 import { activateSubscriptionAfterPayment } from "@monana/grocery";
+import { markCateringPaidAndConfirm } from "@monana/catering";
+import { markSocialOrderPaidAndStartKitchen } from "@monana/restaurant";
 import {
   notifyCustomerPaymentConfirmed,
   notifyCustomerPaymentRejected,
@@ -24,6 +26,10 @@ export async function POST(req: Request) {
 
     if (action === "confirm") {
       await activateSubscriptionAfterPayment(payment.orderId);
+      // Social Order: cooking starts only after payment is confirmed (no COD)
+      await markSocialOrderPaidAndStartKitchen(payment.orderId);
+      // Catering: order confirmed only after payment (no COD)
+      await markCateringPaidAndConfirm(payment.orderId);
     }
 
     const full = await getPayment(paymentId);

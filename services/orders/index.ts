@@ -28,7 +28,9 @@ const STATUS_FLOW_RESTAURANT: Record<OrderStatus, OrderStatus[]> = {
 };
 
 function statusFlow(module: BusinessModule): Record<OrderStatus, OrderStatus[]> {
-  return module === "RESTAURANT" ? STATUS_FLOW_RESTAURANT : STATUS_FLOW_GROCERY;
+  if (module === "GROCERY") return STATUS_FLOW_GROCERY;
+  // Restaurant + Catering: no ON_THE_WAY step required
+  return STATUS_FLOW_RESTAURANT;
 }
 
 async function resolveLineItem(it: { productId?: string; menuItemId?: string; quantity: number }) {

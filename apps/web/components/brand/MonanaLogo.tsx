@@ -1,10 +1,15 @@
 import Image from "next/image";
 
-const FULL_LOGO = "/brand/monana-logo.png";
+/** Full brand lockup (M + Monana FOOD + tagline) */
+const FULL_LOGO = "/logo/image.png";
+/** Compact circular M mark for tight UI (admin, avatars) */
 const MARK_LOGO = "/brand/monana-mark.png";
 
+/** Intrinsic aspect of /logo/image.png */
+const FULL_ASPECT = 1199 / 896;
+
 type Props = {
-  /** Full logo (M + Monana text) or circular M mark */
+  /** Full logo (M + Monana FOOD) or circular M mark */
   variant?: "full" | "mark";
   /** Height in px — width scales automatically */
   height?: number;
@@ -19,12 +24,12 @@ export function MonanaLogo({
   priority = false,
 }: Props) {
   const src = variant === "full" ? FULL_LOGO : MARK_LOGO;
-  const width = variant === "full" ? Math.round(height * 1.05) : height;
+  const width = variant === "full" ? Math.round(height * FULL_ASPECT) : height;
 
   return (
     <Image
       src={src}
-      alt="Monana"
+      alt="Monana FOOD"
       width={width}
       height={height}
       className={`monana-logo monana-logo--${variant}${className ? ` ${className}` : ""}`}

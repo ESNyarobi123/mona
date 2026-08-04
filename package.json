@@ -20,6 +20,8 @@
     "test:grocery-tiers": "tsx scripts/test-grocery-tiers.ts",
     "test:hot-products": "tsx scripts/test-hot-products.ts",
     "test:admin-apis": "tsx scripts/test-admin-dashboard-apis.ts",
+    "test:catering": "tsx scripts/test-catering-apis.ts",
+    "test:social-orders": "tsx scripts/test-custom-orders.ts",
     "docker:up": "docker compose up -d --build",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f",

@@ -17,7 +17,7 @@
 }
 
 .landing-logo .monana-logo--full {
-  height: 2.75rem;
+  height: 3.5rem;
   width: auto;
 }
 
@@ -32,13 +32,20 @@
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
 }
 
+.auth-split__brand .monana-logo--full {
+  height: 4.5rem;
+  width: auto;
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
+}
+
 .admin-sidebar-brand .monana-logo--mark {
   width: 2.25rem;
   height: 2.25rem;
 }
 
 .landing-footer__brand .monana-logo--full {
-  height: 2.5rem;
+  height: 3.25rem;
   width: auto;
 }
 

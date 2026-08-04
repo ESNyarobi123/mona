@@ -155,7 +155,8 @@ export function OrderDetailView() {
         </div>
         {order ? (
           <p className="order-detail-page__meta">
-            {formatDate(order.createdAt)} · {order.module === "RESTAURANT" ? "🍲" : "🛒"}{" "}
+            {formatDate(order.createdAt)} ·{" "}
+            {order.module === "RESTAURANT" ? "🍲" : order.module === "CATERING" ? "🍽️" : "🛒"}{" "}
             {order.module}
             {isPayOnDelivery && !order.submittedAt ? (
               <> · {t("orderNotSubmitted")}</>

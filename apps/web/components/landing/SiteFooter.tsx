@@ -13,7 +13,7 @@ export function SiteFooter() {
       <div className="landing-footer__inner">
         <div className="landing-footer__brand-col">
           <Link href="/" className="landing-footer__brand">
-            <MonanaLogo variant="full" height={40} />
+            <MonanaLogo variant="full" height={52} />
           </Link>
           <p className="landing-footer__tagline">{t("footerTagline")}</p>
         </div>
@@ -27,6 +27,9 @@ export function SiteFooter() {
               </li>
               <li>
                 <Link href="/grocery/products">{t("navGrocery")}</Link>
+              </li>
+              <li>
+                <Link href="/catering">{t("navCatering")}</Link>
               </li>
               <li>
                 <Link href="/grocery/packages">{t("footerMembership")}</Link>

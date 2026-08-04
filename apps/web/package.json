@@ -11,6 +11,7 @@
   "dependencies": {
     "@monana/admin": "*",
     "@monana/bot-content": "*",
+    "@monana/catering": "*",
     "@monana/db": "*",
     "@monana/grocery": "*",
     "@monana/hot-products": "*",

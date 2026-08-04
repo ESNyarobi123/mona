@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { apiGet } from "../../lib/admin-api";
 import { getCart, getCartCount } from "../../lib/cart";
 import { CartNavButton } from "./CartNavButton";
+import { ServiceCategoryToggle } from "../landing/ServiceCategoryToggle";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 
 type Catalog = {
@@ -60,6 +61,8 @@ export function GroceryHomeView() {
 
   return (
     <div className="store-page store-page--hub">
+      <ServiceCategoryToggle />
+
       <header className="store-hub-hero store-hub-hero--grocery">
         <div className="store-hub-hero__main">
           <p className="store-hub-hero__eyebrow">Monana Market</p>

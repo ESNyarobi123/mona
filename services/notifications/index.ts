@@ -186,6 +186,97 @@ export async function notifyAdminPaymentConfirmed(params: {
   );
 }
 
+export async function notifyAdminCustomOrder(params: {
+  id: string;
+  dishName: string;
+  specialRequirements?: string | null;
+  requestedFor: Date | string;
+  mealSlot?: string | null;
+  channel?: string;
+  address?: string | null;
+  customer?: { name?: string | null; phone: string } | null;
+}) {
+  const when = new Date(params.requestedFor).toLocaleString("sw-TZ", {
+    timeZone: "Africa/Dar_es_Salaam",
+  });
+  return notifyAdmin(
+    `🍲 *Social Order mpya* #${shortId(params.id)}\n` +
+      `Huduma: Monana Food (Request for Quote)\n` +
+      `Mteja: ${params.customer?.name ?? "—"} (${params.customer?.phone ?? "?"})\n` +
+      `Chakula: *${params.dishName}*\n` +
+      `${params.specialRequirements ? `Mahitaji: ${params.specialRequirements}\n` : ""}` +
+      `Kupokea: ${when}\n` +
+      `${params.mealSlot ? `Slot: ${params.mealSlot}\n` : ""}` +
+      `Anwani: ${params.address ?? "—"}\n` +
+      `Channel: ${params.channel ?? "WEB"}\n\n` +
+      `👉 Weka bei: /admin/restaurant/social-orders`
+  );
+}
+
+/** Customer: quote ready — must pay before cooking (no COD). */
+export async function notifyCustomerSocialOrderQuote(params: {
+  phone: string;
+  dishName: string;
+  quotedPrice: number | string;
+  payUrl: string;
+  locale?: string | null;
+}) {
+  const amount = formatTZS(Number(params.quotedPrice));
+  const locale = params.locale === "en" ? "en" : "sw";
+  const text =
+    locale === "en"
+      ? `🍲 *Social Order*\nYour order for *${params.dishName}* has been received and will cost *${amount}*.\nTap here to pay so we can start cooking:\n${params.payUrl}\n\nCash on delivery is not available for Social Orders.`
+      : `🍲 *Social Order*\nOda yako ya *${params.dishName}* imepokelewa na itagharimu *${amount}*. Bonyeza hapa kulipia ili kuanza kupikiwa:\n${params.payUrl}\n\nHuduma hii hairuhusu Cash on Delivery — lipa kabla ya kupika.`;
+  return notifyCustomer(params.phone, text);
+}
+
+export async function notifyAdminCateringRequest(params: {
+  id: string;
+  kind: "PACKAGE" | "CUSTOM_QUOTE";
+  eventType: string;
+  eventAt: Date | string;
+  location: string;
+  guestCount: number;
+  packageName?: string | null;
+  quotedPrice?: number | string | null;
+  specialRequirements?: string | null;
+  customer?: { name?: string | null; phone: string } | null;
+}) {
+  const when = new Date(params.eventAt).toLocaleString("sw-TZ", {
+    timeZone: "Africa/Dar_es_Salaam",
+  });
+  const priceLine =
+    params.quotedPrice != null ? `Bei: *${formatTZS(Number(params.quotedPrice))}*\n` : "Bei: inasubiri nukuu\n";
+  return notifyAdmin(
+    `🍽️ *Catering ${params.kind === "PACKAGE" ? "Package" : "Quote Request"}* #${shortId(params.id)}\n` +
+      `Mteja: ${params.customer?.name ?? "—"} (${params.customer?.phone ?? "?"})\n` +
+      `${params.packageName ? `Kifurushi: ${params.packageName}\n` : ""}` +
+      `Aina: ${params.eventType}\n` +
+      `Tukio: ${when}\n` +
+      `Eneo: ${params.location}\n` +
+      `Watu: ${params.guestCount}\n` +
+      priceLine +
+      `${params.specialRequirements ? `Mahitaji: ${params.specialRequirements}\n` : ""}` +
+      `\n👉 /admin/catering`
+  );
+}
+
+export async function notifyCustomerCateringQuote(params: {
+  phone: string;
+  label: string;
+  quotedPrice: number | string;
+  payUrl: string;
+  locale?: string | null;
+}) {
+  const amount = formatTZS(Number(params.quotedPrice));
+  const locale = params.locale === "en" ? "en" : "sw";
+  const text =
+    locale === "en"
+      ? `🍽️ *Monana Catering*\nYour catering request (*${params.label}*) has been priced at *${amount}*.\nPay here to confirm your order:\n${params.payUrl}\n\nCatering orders are confirmed only after payment (no cash on delivery).`
+      : `🍽️ *Monana Catering*\nOmbi lako la catering (*${params.label}*) limepokelewa na litagharimu *${amount}*.\nBonyeza hapa kulipia ili oda ithibitishwe:\n${params.payUrl}\n\nCatering inathibitishwa baada tu ya malipo (hakuna Cash on Delivery).`;
+  return notifyCustomer(params.phone, text);
+}
+
 // ——— Customer alerts ———
 
 const SLOT_REMINDER_HEAD: Record<

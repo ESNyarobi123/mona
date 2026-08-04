@@ -3,12 +3,21 @@
 import Link from "next/link";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 
-const MODULE_IDS = ["restaurant", "grocery"] as const;
-
 export function ModulesSection() {
   const { t } = useAppLocale();
 
   const modules = [
+    {
+      id: "grocery" as const,
+      emoji: "🛒",
+      title: t("modGrocTitle"),
+      description: t("modGrocDesc"),
+      tags: [t("tagOnDemand"), t("tagWeeklyBasket"), t("tagSave5Pct"), t("tagFreeDelivery")],
+      href: "/grocery",
+      cta: t("modGrocCta"),
+      btnClass: "landing-btn--orange",
+      className: "landing-module-card--grocery",
+    },
     {
       id: "restaurant" as const,
       emoji: "🍲",
@@ -21,15 +30,15 @@ export function ModulesSection() {
       className: "",
     },
     {
-      id: "grocery" as const,
-      emoji: "🛒",
-      title: t("modGrocTitle"),
-      description: t("modGrocDesc"),
-      tags: [t("tagOnDemand"), t("tagWeeklyBasket"), t("tagSave5Pct"), t("tagFreeDelivery")],
-      href: "/grocery",
-      cta: t("modGrocCta"),
-      btnClass: "landing-btn--orange",
-      className: "landing-module-card--grocery",
+      id: "catering" as const,
+      emoji: "🍽️",
+      title: t("modCatTitle"),
+      description: t("modCatDesc"),
+      tags: [t("tagPerHead"), t("tagEvents"), t("tagQuote"), t("tagPayConfirm")],
+      href: "/catering",
+      cta: t("modCatCta"),
+      btnClass: "landing-btn--navy",
+      className: "landing-module-card--catering",
     },
   ];
 

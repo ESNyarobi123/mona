@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { HeroSection } from "./HeroSection";
+import { ServiceCategoryToggle } from "./ServiceCategoryToggle";
 import { RestaurantOrderTicker } from "./RestaurantOrderTicker";
 import { ModulesSection } from "./ModulesSection";
 import { BotShowcaseView } from "./BotShowcaseView";
@@ -41,6 +42,7 @@ export function LandingPageView({ botShowcase: initialBotShowcase, restaurantTic
     <div className="landing">
       <SiteHeader />
       <main>
+        <ServiceCategoryToggle />
         <HeroSection />
         <RestaurantOrderTicker initial={restaurantTicker} locale={locale} />
         <ModulesSection />

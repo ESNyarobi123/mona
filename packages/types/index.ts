@@ -2,7 +2,7 @@ export * from "./schemas";
 
 export type ID = string;
 
-export type BusinessModule = "RESTAURANT" | "GROCERY";
+export type BusinessModule = "RESTAURANT" | "GROCERY" | "CATERING";
 /** @deprecated use BusinessModule */
 export type OrderType = BusinessModule;
 

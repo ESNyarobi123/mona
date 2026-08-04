@@ -46,8 +46,8 @@ export const loginSchema = z.object({
   password: z.string().min(4).optional(),
 });
 
-/** Restaurant = RESTAURANT, Grocery = GROCERY */
-export const businessModuleSchema = z.enum(["RESTAURANT", "GROCERY"]);
+/** Restaurant | Grocery | Catering */
+export const businessModuleSchema = z.enum(["RESTAURANT", "GROCERY", "CATERING"]);
 
 /** @deprecated use businessModuleSchema — kept for bot/API aliases */
 export const orderTypeSchema = businessModuleSchema;
@@ -69,6 +69,61 @@ export const updateMealSlotWindowsSchema = z.object({
 
 export const channelSchema = z.enum(["WEB", "WHATSAPP"]);
 
+export const cateringEventTypeSchema = z.enum([
+  "WEDDING",
+  "SEND_OFF",
+  "CORPORATE",
+  "BIRTHDAY",
+  "FUNERAL",
+  "OTHER",
+]);
+
+export const cateringRequestStatusSchema = z.enum([
+  "PENDING",
+  "QUOTED",
+  "CONFIRMED",
+  "PREPARING",
+  "COMPLETED",
+  "CANCELLED",
+  "REJECTED",
+]);
+
+export const createCateringCustomQuoteSchema = z.object({
+  userId: z.string().min(1),
+  eventType: cateringEventTypeSchema,
+  eventAt: z.string().datetime({ message: "Chagua tarehe na muda wa tukio" }),
+  location: z.string().trim().min(3, "Andika eneo/anwani ya tukio").max(500),
+  guestCount: z.coerce.number().int().min(1, "Andika idadi ya watu"),
+  specialRequirements: z.string().trim().max(2000).optional().or(z.literal("")),
+  channel: channelSchema.default("WEB"),
+});
+
+export const createCateringPackageBookingSchema = createCateringCustomQuoteSchema.extend({
+  packageId: z.string().min(1, "Chagua kifurushi"),
+});
+
+export const sendCateringQuoteSchema = z.object({
+  quotedPrice: z.coerce.number().positive("Bei lazima iwe zaidi ya 0"),
+  adminNote: z.string().trim().max(1000).nullable().optional(),
+});
+
+export const upsertCateringPackageSchema = z.object({
+  code: z.string().trim().min(2).max(40),
+  nameEn: z.string().trim().min(2).max(120),
+  nameSw: z.string().trim().min(2).max(120),
+  descriptionEn: z.string().trim().min(2).max(2000),
+  descriptionSw: z.string().trim().min(2).max(2000),
+  pricePerHead: z.coerce.number().positive(),
+  minGuests: z.coerce.number().int().min(1),
+  maxGuests: z.coerce.number().int().min(1).nullable().optional(),
+  // Optional (no .default) so PATCH partial updates never wipe features.
+  featuresEn: z.array(z.string().trim().min(1)).optional(),
+  featuresSw: z.array(z.string().trim().min(1)).optional(),
+  imageUrl: z.string().url().nullable().optional().or(z.literal("")),
+  active: z.boolean().optional(),
+  sortOrder: z.coerce.number().int().optional(),
+});
+
 export const orderStatusSchema = z.enum([
   "PENDING",
   "CONFIRMED",
@@ -77,6 +132,50 @@ export const orderStatusSchema = z.enum([
   "DELIVERED",
   "CANCELLED",
 ]);
+
+export const customOrderStatusSchema = z.enum([
+  "PENDING",
+  "QUOTED",
+  "ACCEPTED",
+  "REJECTED",
+  "PREPARING",
+  "READY",
+  "COMPLETED",
+  "CANCELLED",
+]);
+
+export const createCustomOrderSchema = z.object({
+  userId: z.string().min(1),
+  dishName: z
+    .string()
+    .trim()
+    .min(2, "Andika jina la chakula/mboga")
+    .max(160, "Jina la chakula ni refu mno"),
+  specialRequirements: z
+    .string()
+    .trim()
+    .max(1000, "Mahitaji maalum ni marefu mno")
+    .optional()
+    .or(z.literal("")),
+  /** ISO datetime — when the customer wants to receive the meal */
+  requestedFor: z.string().datetime({ message: "Chagua muda sahihi wa kupokea" }),
+  channel: channelSchema.default("WEB"),
+  address: z.string().trim().max(500).optional().or(z.literal("")),
+});
+
+export const updateCustomOrderSchema = z.object({
+  status: customOrderStatusSchema,
+  quotedPrice: z.coerce.number().nonnegative().nullable().optional(),
+  adminNote: z.string().trim().max(1000).nullable().optional(),
+});
+
+/** Admin: send RFQ price for a Social Order (pay-before-cook, no COD). */
+export const sendSocialOrderQuoteSchema = z.object({
+  quotedPrice: z.coerce
+    .number({ invalid_type_error: "Weka bei" })
+    .positive("Bei lazima iwe zaidi ya 0"),
+  adminNote: z.string().trim().max(1000).nullable().optional(),
+});
 
 export const unitCodeSchema = z
   .string()
@@ -624,5 +723,9 @@ export type RegisterInput = z.infer<typeof registerSchema>;
 export type RegisterWebInput = z.infer<typeof registerWebSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateOrderSchemaInput = z.infer<typeof createOrderSchema>;
+export type CreateCustomOrderSchemaInput = z.infer<typeof createCustomOrderSchema>;
+export type UpdateCustomOrderSchemaInput = z.infer<typeof updateCustomOrderSchema>;
+export type SendSocialOrderQuoteSchemaInput = z.infer<typeof sendSocialOrderQuoteSchema>;
 export type BusinessModule = z.infer<typeof businessModuleSchema>;
 export type MealSlot = z.infer<typeof mealSlotSchema>;
+export type CustomOrderStatus = z.infer<typeof customOrderStatusSchema>;

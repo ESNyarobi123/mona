@@ -41,6 +41,100 @@
   gap: 1.5rem;
 }
 
+.service-toggle {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(249, 249, 249, 0.96));
+  border-bottom: 1px solid var(--mn-border, #e5e7eb);
+}
+
+.service-toggle--sticky {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  backdrop-filter: blur(10px);
+}
+
+.service-toggle__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.75rem 1.5rem 0.9rem;
+}
+
+.service-toggle__label {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--mn-text-muted, #6b7280);
+}
+
+.service-toggle__tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.service-toggle__tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 3rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--mn-border, #e5e7eb);
+  background: #fff;
+  text-decoration: none;
+  color: var(--mn-navy, #1b2845);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.service-toggle__tab strong {
+  font-size: clamp(0.78rem, 2.2vw, 0.92rem);
+  font-weight: 800;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.service-toggle__tab:hover {
+  border-color: rgba(255, 107, 44, 0.45);
+  transform: translateY(-1px);
+}
+
+.service-toggle__tab.is-active {
+  border-color: transparent;
+  box-shadow: 0 8px 22px rgba(27, 40, 69, 0.12);
+}
+
+.service-toggle__tab--grocery.is-active {
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.12), rgba(22, 163, 74, 0.04));
+  color: #15803d;
+}
+
+.service-toggle__tab--restaurant.is-active {
+  background: linear-gradient(135deg, rgba(255, 107, 44, 0.14), rgba(255, 176, 32, 0.08));
+  color: #9a3412;
+}
+
+.service-toggle__tab--catering.is-active {
+  background: linear-gradient(135deg, rgba(27, 40, 69, 0.12), rgba(46, 107, 46, 0.08));
+  color: #1b2845;
+}
+
+@media (max-width: 640px) {
+  .service-toggle__tab {
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.55rem 0.35rem;
+  }
+
+  .service-toggle__tab strong {
+    font-size: 0.72rem;
+    text-align: center;
+  }
+}
+
 .landing-logo {
   display: flex;
   align-items: center;

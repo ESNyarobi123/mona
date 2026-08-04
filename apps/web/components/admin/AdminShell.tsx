@@ -31,7 +31,7 @@ export function AdminShell({
   variant = "main",
 }: {
   children: ReactNode;
-  variant?: "main" | "restaurant" | "grocery";
+  variant?: "main" | "restaurant" | "grocery" | "catering";
 }) {
   const { t } = useAdminLocale();
 
@@ -54,6 +54,27 @@ export function AdminShell({
         items: [
           { href: "/admin/restaurant", label: t("navRestaurant"), icon: <IconRestaurant /> },
           { href: "/admin/grocery", label: t("navGrocery"), icon: <IconGrocery /> },
+          { href: "/admin/catering", label: t("navCatering"), icon: <IconPackage /> },
+        ],
+      },
+    ],
+    [t]
+  );
+
+  const cateringSections = useMemo<NavSection[]>(
+    () => [
+      {
+        label: t("navCatering"),
+        items: [
+          { href: "/admin/catering", label: t("overview"), icon: <IconDashboard />, exact: true },
+          { href: "/admin/catering/packages", label: t("packages"), icon: <IconPackage /> },
+          { href: "/admin/orders?module=CATERING", label: t("orders"), icon: <IconOrders /> },
+        ],
+      },
+      {
+        label: t("navShortcuts"),
+        items: [
+          { href: "/admin/payments", label: t("payments"), icon: <IconPayments /> },
         ],
       },
     ],
@@ -72,6 +93,7 @@ export function AdminShell({
           { href: "/admin/restaurant/menus", label: t("menuBoards"), icon: <IconPackage /> },
           { href: "/admin/restaurant/menu", label: t("menuItems"), icon: <IconMenu /> },
           { href: "/admin/restaurant/kitchen", label: t("kitchen"), icon: <IconKitchen /> },
+          { href: "/admin/restaurant/social-orders", label: t("socialOrders"), icon: <IconOrders /> },
           { href: "/admin/restaurant/hot", label: t("hotPick"), icon: <IconSparkle /> },
           { href: "/admin/restaurant/settings", label: t("restaurantSettings"), icon: <IconSettings /> },
           { href: "/admin/restaurant/delivery", label: t("deliveryPricingRestaurant"), icon: <IconReports /> },
@@ -120,7 +142,13 @@ export function AdminShell({
   );
 
   const sections =
-    variant === "restaurant" ? restaurantSections : variant === "grocery" ? grocerySections : mainSections;
+    variant === "restaurant"
+      ? restaurantSections
+      : variant === "grocery"
+        ? grocerySections
+        : variant === "catering"
+          ? cateringSections
+          : mainSections;
   const footerItems = variant !== "main" ? [backLink] : undefined;
 
   return (

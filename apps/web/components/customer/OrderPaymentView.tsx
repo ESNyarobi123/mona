@@ -35,7 +35,7 @@ type PaymentInfo = {
 type CheckoutInfo = {
   id: string;
   kind: "CHECKOUT_INTENT";
-  module: "RESTAURANT" | "GROCERY";
+  module: "RESTAURANT" | "GROCERY" | "CATERING";
   total: string | number;
   status: string;
   paymentToken: string;
@@ -43,7 +43,7 @@ type CheckoutInfo = {
 
 type OrderInfo = {
   id: string;
-  module: "RESTAURANT" | "GROCERY";
+  module: "RESTAURANT" | "GROCERY" | "CATERING";
   status: string;
   total: string | number;
   paymentTiming?: "PAY_NOW" | "PAY_ON_DELIVERY";
@@ -63,6 +63,12 @@ const MODULE_UI = {
     theme: "navy" as const,
     ordersHref: "/restaurant/orders",
     label: "Restaurant",
+  },
+  CATERING: {
+    icon: "🍽️",
+    theme: "navy" as const,
+    ordersHref: "/catering/requests",
+    label: "Catering",
   },
 };
 

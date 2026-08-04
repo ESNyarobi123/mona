@@ -774,6 +774,35 @@
   box-shadow: 0 0 0 3px rgba(255, 107, 44, 0.12);
 }
 
+.admin-lead {
+  margin: -0.35rem 0 1rem;
+  max-width: 48rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--admin-muted, #64748b);
+}
+
+.admin-success {
+  margin: 0 0 0.85rem;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(22, 163, 74, 0.12);
+  color: var(--admin-success);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.admin-link {
+  color: var(--admin-accent, #ea580c);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.admin-link:hover {
+  text-decoration: underline;
+}
+
 .admin-error {
   color: var(--admin-danger);
   font-size: 0.85rem;
@@ -852,6 +881,12 @@
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.admin-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
 }
 
 .admin-empty {

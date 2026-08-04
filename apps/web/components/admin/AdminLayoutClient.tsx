@@ -13,11 +13,14 @@ export function AdminLayoutClient({ children }: { children: ReactNode }) {
     pathname.startsWith("/admin/grocery/units") &&
     searchParams.get("context") === "restaurant";
 
-  const variant = pathname.startsWith("/admin/restaurant") || unitsRestaurant
-    ? "restaurant"
-    : pathname.startsWith("/admin/grocery")
-      ? "grocery"
-      : "main";
+  const variant =
+    pathname.startsWith("/admin/restaurant") || unitsRestaurant
+      ? "restaurant"
+      : pathname.startsWith("/admin/grocery")
+        ? "grocery"
+        : pathname.startsWith("/admin/catering")
+          ? "catering"
+          : "main";
 
   return (
     <AdminLocaleProvider>

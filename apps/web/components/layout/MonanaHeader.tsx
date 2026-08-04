@@ -48,7 +48,7 @@ export function MonanaHeader({ variant = "app" }: { variant?: "landing" | "app" 
     <header className="landing-header">
       <div className="landing-header__inner">
         <Link href={logoHref} className="landing-logo" title={user ? t("navAccount") : "Monana"}>
-          <MonanaLogo variant="full" height={44} priority />
+          <MonanaLogo variant="full" height={56} priority />
         </Link>
 
         <nav className="landing-nav" aria-label="Main">
@@ -60,6 +60,9 @@ export function MonanaHeader({ variant = "app" }: { variant?: "landing" | "app" 
           </Link>
           <Link href="/grocery" className={navClass("/grocery")}>
             {t("navGrocery")}
+          </Link>
+          <Link href="/catering" className={navClass("/catering")}>
+            {t("navCatering")}
           </Link>
           {user ? (
             <Link href="/account" className={navClass("/account")}>

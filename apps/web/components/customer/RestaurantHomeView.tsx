@@ -6,6 +6,8 @@ import { apiGet } from "../../lib/admin-api";
 import { tr, slotStatusLabel, t as translate } from "../../lib/customer-i18n";
 import { getCartCount } from "../../lib/cart";
 import { CartNavButton } from "./CartNavButton";
+import { CustomOrderCta } from "./CustomOrderCta";
+import { ServiceCategoryToggle } from "../landing/ServiceCategoryToggle";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 
 const SLOT_ORDER = ["BREAKFAST", "LUNCH", "DINNER"] as const;
@@ -54,6 +56,7 @@ export function RestaurantHomeView() {
 
   return (
     <div className="store-page store-page--hub">
+      <ServiceCategoryToggle />
       <header className="store-hub-hero store-hub-hero--restaurant">
         <div className="store-hub-hero__main">
           <p className="store-hub-hero__eyebrow">Monana Food</p>
@@ -111,9 +114,23 @@ export function RestaurantHomeView() {
         </section>
       ) : null}
 
+      <CustomOrderCta />
+
       <section className="store-hub" aria-label="Actions">
         <h2 className="store-hub__section-title">{t("goTo")}</h2>
         <div className="store-hub__grid">
+          <Link href="/restaurant/social-order" className="store-hub__card store-hub__card--default">
+            <span className="store-hub__card-icon" aria-hidden>
+              🍲
+            </span>
+            <div className="store-hub__card-text">
+              <strong>{t("customOrderHubCard")}</strong>
+              <small>{t("customOrderHubCardSub")}</small>
+            </div>
+            <span className="store-hub__card-arrow" aria-hidden>
+              →
+            </span>
+          </Link>
           <Link href="/restaurant/menu" className="store-hub__card store-hub__card--primary">
             <span className="store-hub__card-icon" aria-hidden>
               📋

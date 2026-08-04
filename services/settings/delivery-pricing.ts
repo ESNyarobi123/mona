@@ -34,6 +34,7 @@ export const DEFAULT_DELIVERY_PRICING: DeliveryPricingConfig = {
 const SETTING_KEY: Record<BusinessModule, string> = {
   GROCERY: "delivery_pricing_grocery",
   RESTAURANT: "delivery_pricing_restaurant",
+  CATERING: "delivery_pricing_catering",
 };
 
 function parseKeywords(raw: unknown): string[] {
