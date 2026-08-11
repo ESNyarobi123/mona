@@ -22,6 +22,7 @@ import {
   IconSparkle,
   IconSubscription,
   IconUnits,
+  IconUser,
   IconUsers,
   IconWhatsApp,
 } from "./AdminIcons";
@@ -47,6 +48,7 @@ export function AdminShell({
           { href: "/admin/payments", label: t("payments"), icon: <IconPayments /> },
           { href: "/admin/reports", label: t("reports"), icon: <IconReports /> },
           { href: "/admin/users", label: t("users"), icon: <IconUsers /> },
+          { href: "/admin/profile", label: t("navProfile"), icon: <IconUser /> },
         ],
       },
       {
@@ -74,7 +76,7 @@ export function AdminShell({
       {
         label: t("navShortcuts"),
         items: [
-          { href: "/admin/payments", label: t("payments"), icon: <IconPayments /> },
+          { href: "/admin/payments?module=CATERING", label: t("payments"), icon: <IconPayments /> },
         ],
       },
     ],

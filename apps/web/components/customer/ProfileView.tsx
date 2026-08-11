@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { apiGet, apiPatch, getStoredUser, getToken, setSession } from "../../lib/admin-api";
+import { apiGet, apiPatch, apiPost, getStoredUser, getToken, setSession } from "../../lib/admin-api";
 import { formatDate } from "../../lib/format";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 
@@ -25,8 +25,15 @@ export function ProfileView() {
   const [locale, setLocale] = useState<"en" | "sw">("en");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pwSaving, setPwSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     apiGet<Profile>("/api/auth")
@@ -83,6 +90,30 @@ export function ProfileView() {
       setError(err instanceof Error ? err.message : t("changeLangFailed"));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault();
+    setPwSaving(true);
+    setError("");
+    setSuccess("");
+    if (newPassword !== confirmPassword) {
+      setError(t("passwordMismatch"));
+      setPwSaving(false);
+      return;
+    }
+    try {
+      await apiPost("/api/auth/password", { currentPassword, newPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setSuccess(t("passwordChanged"));
+      setTimeout(() => setSuccess(""), 4000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("saveFailed"));
+    } finally {
+      setPwSaving(false);
     }
   }
 
@@ -183,6 +214,106 @@ export function ProfileView() {
             <footer className="profile-form__footer">
               <button type="submit" className="landing-btn landing-btn--orange profile-form__submit" disabled={saving}>
                 {saving ? t("saving") : t("saveChanges")}
+              </button>
+            </footer>
+          </form>
+
+          <form className="profile-card profile-card--form" onSubmit={changePassword} autoComplete="off">
+            <header className="profile-card__head">
+              <span className="profile-card__head-icon" aria-hidden>
+                🔐
+              </span>
+              <div>
+                <h2>{t("changePassword")}</h2>
+                <p className="profile-card__head-sub">{t("changePasswordSub")}</p>
+              </div>
+            </header>
+
+            <div className="profile-form">
+              <label className="profile-field">
+                <span className="profile-field__label">{t("currentPassword")}</span>
+                <span className="profile-field__wrap profile-field__wrap--toggle">
+                  <span className="profile-field__icon" aria-hidden>
+                    🔒
+                  </span>
+                  <input
+                    type={showCurrent ? "text" : "password"}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    autoComplete="current-password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="profile-field__toggle"
+                    onClick={() => setShowCurrent((v) => !v)}
+                    aria-label={showCurrent ? t("hidePassword") : t("showPassword")}
+                  >
+                    {showCurrent ? "🙈" : "👁"}
+                  </button>
+                </span>
+              </label>
+
+              <label className="profile-field">
+                <span className="profile-field__label">{t("newPassword")}</span>
+                <span className="profile-field__wrap profile-field__wrap--toggle">
+                  <span className="profile-field__icon" aria-hidden>
+                    🔒
+                  </span>
+                  <input
+                    type={showNew ? "text" : "password"}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder={t("passwordMinPlaceholder")}
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="profile-field__toggle"
+                    onClick={() => setShowNew((v) => !v)}
+                    aria-label={showNew ? t("hidePassword") : t("showPassword")}
+                  >
+                    {showNew ? "🙈" : "👁"}
+                  </button>
+                </span>
+              </label>
+
+              <label className="profile-field">
+                <span className="profile-field__label">{t("confirmPassword")}</span>
+                <span className="profile-field__wrap profile-field__wrap--toggle">
+                  <span className="profile-field__icon" aria-hidden>
+                    🔒
+                  </span>
+                  <input
+                    type={showConfirm ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder={t("repeatPassword")}
+                    autoComplete="new-password"
+                    minLength={6}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className="profile-field__toggle"
+                    onClick={() => setShowConfirm((v) => !v)}
+                    aria-label={showConfirm ? t("hidePassword") : t("showPassword")}
+                  >
+                    {showConfirm ? "🙈" : "👁"}
+                  </button>
+                </span>
+              </label>
+            </div>
+
+            <footer className="profile-form__footer">
+              <button
+                type="submit"
+                className="landing-btn landing-btn--orange profile-form__submit"
+                disabled={pwSaving}
+              >
+                {pwSaving ? t("updatingPassword") : t("updatePassword")}
               </button>
             </footer>
           </form>

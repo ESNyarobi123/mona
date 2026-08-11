@@ -6,15 +6,19 @@ import { useAdminLocale } from "../AdminLocaleProvider";
 type Props = {
   restaurantOrdersToday: number;
   groceryOrdersToday: number;
+  cateringOrdersToday: number;
   restaurantShare: number;
   groceryShare: number;
+  cateringShare: number;
 };
 
 export function AdminModuleLaunchers({
   restaurantOrdersToday,
   groceryOrdersToday,
+  cateringOrdersToday,
   restaurantShare,
   groceryShare,
+  cateringShare,
 }: Props) {
   const { t } = useAdminLocale();
 
@@ -71,6 +75,34 @@ export function AdminModuleLaunchers({
             </span>
             <span>
               <strong>{groceryShare}%</strong>
+              <em>{t("percentage")}</em>
+            </span>
+          </span>
+          <span className="admin-module-launch__go">
+            {t("enterDashboard")}
+            <span className="admin-module-launch__arrow" aria-hidden>
+              →
+            </span>
+          </span>
+        </Link>
+
+        <Link href="/admin/catering" className="admin-module-launch__card admin-module-launch__card--catering">
+          <span className="admin-module-launch__accent" aria-hidden />
+          <span className="admin-module-launch__icon" aria-hidden>
+            🍱
+          </span>
+          <span className="admin-module-launch__copy">
+            <span className="admin-module-launch__tag">{t("navCatering")}</span>
+            <strong>{t("navCatering")}</strong>
+            <small>{t("cateringAdminDesc")}</small>
+          </span>
+          <span className="admin-module-launch__metrics">
+            <span>
+              <strong>{cateringOrdersToday}</strong>
+              <em>{t("ordersToday")}</em>
+            </span>
+            <span>
+              <strong>{cateringShare}%</strong>
               <em>{t("percentage")}</em>
             </span>
           </span>

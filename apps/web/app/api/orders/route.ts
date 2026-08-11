@@ -1,6 +1,7 @@
 import { createOrderSchema } from "@monana/types";
 import { createCheckoutIntent, createOrder, getUserOrders, listOrders } from "@monana/orders";
 import { prisma } from "@monana/db";
+import type { BusinessModule } from "@monana/db";
 import { parsePagination } from "@monana/utils";
 import { notifyAdminPayOnDeliveryOrder } from "../../../lib/whatsapp";
 import { handle, ok, parseBody } from "../../../lib/api";
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
 
     if (userId) {
       requireSelfAdminOrBot(req, userId);
-      const module = url.searchParams.get("module") as "RESTAURANT" | "GROCERY" | undefined;
+      const module = url.searchParams.get("module") as BusinessModule | undefined;
       const orderType = url.searchParams.get("orderType") as "ON_DEMAND" | "SUBSCRIPTION" | null;
       return ok(
         await getUserOrders(userId, module, {
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
 
     requireAdmin(req);
     const status = url.searchParams.get("status") as Parameters<typeof listOrders>[0]["status"];
-    const module = url.searchParams.get("module") as "RESTAURANT" | "GROCERY" | undefined;
+    const module = url.searchParams.get("module") as BusinessModule | undefined;
     const orderType = url.searchParams.get("orderType") as "ON_DEMAND" | "SUBSCRIPTION" | null;
     const q = url.searchParams.get("q") ?? undefined;
     return ok(

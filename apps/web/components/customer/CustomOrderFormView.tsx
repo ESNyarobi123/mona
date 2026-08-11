@@ -80,7 +80,7 @@ export function CustomOrderFormView() {
       setSuccess(t("customOrderSuccess"));
       setDishName("");
       setSpecialRequirements("");
-      setTimeout(() => router.push("/restaurant/orders"), 1400);
+      setTimeout(() => router.push("/restaurant/social-order/requests"), 1400);
     } catch (err) {
       setError(err instanceof Error ? err.message : t("orderFailed"));
     } finally {

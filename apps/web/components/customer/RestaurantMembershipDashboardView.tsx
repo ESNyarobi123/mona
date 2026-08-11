@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { apiGet, apiPost, getStoredUser } from "../../lib/admin-api";
+import { apiGet, apiPatch, apiPost, getStoredUser } from "../../lib/admin-api";
 import { SLOT_I18N } from "../../lib/customer-i18n";
 import { useAppLocale } from "../providers/AppLocaleProvider";
 
@@ -19,6 +19,7 @@ const SLOT_EMOJI: Record<string, string> = {
   LUNCH: "☀️",
   DINNER: "🌙",
 };
+const ALL_SLOTS = ["BREAKFAST", "LUNCH", "DINNER"] as const;
 
 export function RestaurantMembershipDashboardView() {
   const { locale, t } = useAppLocale();
@@ -28,6 +29,9 @@ export function RestaurantMembershipDashboardView() {
   const [error, setError] = useState("");
   const [pausing, setPausing] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [updatingSlots, setUpdatingSlots] = useState(false);
+  const [slotDraft, setSlotDraft] = useState<string[]>([]);
+  const [slotSuccess, setSlotSuccess] = useState("");
 
   function load() {
     if (!user) return;
@@ -43,6 +47,14 @@ export function RestaurantMembershipDashboardView() {
   }, [user?.id]);
 
   const active = subs.find((s) => s.status === "ACTIVE" || s.status === "PAUSED");
+
+  useEffect(() => {
+    if (!active) {
+      setSlotDraft([]);
+      return;
+    }
+    setSlotDraft(active.mealSlots);
+  }, [active?.id, active?.mealSlots.join(",")]);
 
   function slotLabel(slot: string) {
     return SLOT_I18N[slot]?.[locale] ?? slot;
@@ -82,6 +94,33 @@ export function RestaurantMembershipDashboardView() {
       setCancelling(false);
     }
   }
+
+  function toggleSlot(slot: string) {
+    setSlotDraft((prev) => (prev.includes(slot) ? prev.filter((item) => item !== slot) : [...prev, slot]));
+  }
+
+  async function saveMealSlots() {
+    if (!active) return;
+    if (slotDraft.length === 0) {
+      setError(t("restaurantMembershipPickSlot"));
+      return;
+    }
+    setUpdatingSlots(true);
+    setError("");
+    setSlotSuccess("");
+    try {
+      await apiPatch(`/api/restaurant/membership/${active.id}`, { mealSlots: slotDraft });
+      setSlotSuccess(t("restaurantMembershipSlotsSaved"));
+      setTimeout(() => setSlotSuccess(""), 3500);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("actionFailed"));
+    } finally {
+      setUpdatingSlots(false);
+    }
+  }
+
+  const slotsDirty = !!active && slotDraft.slice().sort().join(",") !== active.mealSlots.slice().sort().join(",");
 
   return (
     <div className="membership-page membership-page--restaurant">
@@ -127,6 +166,36 @@ export function RestaurantMembershipDashboardView() {
                 {SLOT_EMOJI[slot] ?? "🍽"} {slotLabel(slot)}
               </span>
             ))}
+          </div>
+
+          <div className="rest-membership-editor">
+            <p className="rest-membership-editor__title">{t("restaurantMembershipEditMeals")}</p>
+            <div className="rest-membership-editor__list">
+              {ALL_SLOTS.map((slot) => {
+                const checked = slotDraft.includes(slot);
+                return (
+                  <label key={slot} className="rest-membership-editor__item">
+                    <input type="checkbox" checked={checked} onChange={() => toggleSlot(slot)} disabled={updatingSlots} />
+                    <span>
+                      {SLOT_EMOJI[slot]} {slotLabel(slot)}
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              className="landing-btn landing-btn--ghost landing-btn--sm"
+              disabled={updatingSlots || !slotsDirty || slotDraft.length === 0}
+              onClick={saveMealSlots}
+            >
+              {updatingSlots ? t("saving") : t("saveMealSlots")}
+            </button>
+            {slotSuccess ? (
+              <p className="auth-toast auth-toast--success rest-membership-editor__toast" role="status">
+                {slotSuccess}
+              </p>
+            ) : null}
           </div>
 
           {active.address ? (

@@ -3,7 +3,13 @@
 const TOKEN_KEY = "monana_token";
 const USER_KEY = "monana_user";
 
-export type StoredUser = { id: string; name: string | null; phone: string; role: string };
+export type StoredUser = {
+  id: string;
+  name: string | null;
+  phone: string;
+  role: string;
+  imageUrl?: string | null;
+};
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;

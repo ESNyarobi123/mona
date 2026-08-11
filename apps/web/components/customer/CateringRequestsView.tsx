@@ -18,6 +18,7 @@ type CateringRequest = {
   status: string;
   quotedPrice: string | number | null;
   orderId: string | null;
+  paymentStatus?: string | null;
   package?: { nameEn: string; nameSw: string } | null;
 };
 
@@ -119,8 +120,21 @@ export function CateringRequestsView() {
                 : row.package.nameEn
               : t("cateringKindQuote");
             const eventKey = EVENT_LABEL[row.eventType] ?? "cateringEventOther";
-            const canPay = row.status === "QUOTED" && row.orderId;
-            const canCancel = row.status === "PENDING" || row.status === "QUOTED";
+            const paymentLocked =
+              row.paymentStatus === "PAID" || row.paymentStatus === "AWAITING_CONFIRMATION";
+            const canPay = row.status === "QUOTED" && !!row.orderId && !paymentLocked;
+            const canCancel =
+              (row.status === "PENDING" || row.status === "QUOTED") && !paymentLocked;
+            const statusLabel =
+              row.paymentStatus === "AWAITING_CONFIRMATION"
+                ? t("cateringStatusAwaitingPayConfirm")
+                : row.paymentStatus === "PAID" || row.status === "CONFIRMED"
+                  ? t("cateringStatusConfirmed")
+                  : row.status === "QUOTED"
+                    ? t("cateringStatusQuoted")
+                    : row.status === "PENDING"
+                      ? t("cateringStatusPending")
+                      : row.status.replace(/_/g, " ");
             return (
               <li key={row.id} className="catering-request-card">
                 <div className="catering-request-card__top">
@@ -128,11 +142,7 @@ export function CateringRequestsView() {
                     {row.kind === "PACKAGE" ? t("cateringKindPackage") : t("cateringKindQuote")}
                   </span>
                   <span className={`order-status order-status--${statusClass(row.status)}`}>
-                    {row.status === "QUOTED"
-                      ? t("cateringStatusQuoted")
-                      : row.status === "PENDING"
-                        ? t("cateringStatusPending")
-                        : row.status.replace(/_/g, " ")}
+                    {statusLabel}
                   </span>
                 </div>
                 <strong>{title}</strong>

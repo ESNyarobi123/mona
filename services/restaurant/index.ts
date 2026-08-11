@@ -150,6 +150,7 @@ export {
   getRestaurantMembershipById,
   pauseRestaurantMembership,
   cancelRestaurantMembership,
+  updateRestaurantMembershipMealSlots,
   getRestaurantMembershipSetup,
   assertCanEnrollRestaurantMembership,
 } from "./membership";

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, type ReactNode } from "react";
-import { clearSession, getStoredUser } from "../../lib/admin-api";
+import { useEffect, useState, type ReactNode } from "react";
+import { clearSession, getStoredUser, type StoredUser } from "../../lib/admin-api";
 import { userDisplayName, userInitials } from "../../lib/admin-dashboard";
 import { useAdminLocale } from "./AdminLocaleProvider";
 import { IconChevronLeft } from "./AdminIcons";
@@ -29,9 +29,22 @@ export function Sidebar({
   footerItems?: NavItem[];
 }) {
   const pathname = usePathname();
-  const user = getStoredUser();
   const { t } = useAdminLocale();
   const [collapsed, setCollapsed] = useState(false);
+  const [user, setUser] = useState<StoredUser | null>(null);
+
+  useEffect(() => {
+    function refresh() {
+      setUser(getStoredUser());
+    }
+    refresh();
+    window.addEventListener("storage", refresh);
+    window.addEventListener("monana-session", refresh);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("monana-session", refresh);
+    };
+  }, [pathname]);
 
   function isActive(href: string, exact?: boolean) {
     if (exact || href === "/admin") return pathname === href;
@@ -80,16 +93,27 @@ export function Sidebar({
       </nav>
 
       <div className="admin-sidebar__bottom">
-        <div className="admin-sidebar-profile">
-          <div className="admin-sidebar-profile__avatar">
-            {userInitials(user?.name, user?.phone)}
-          </div>
-          {!collapsed && (
-            <div className="admin-sidebar-profile__info">
-              <strong>{userDisplayName(user?.name, user?.phone)}</strong>
-              <small>{user?.phone ?? "Admin"}</small>
+        <div className={`admin-sidebar-profile${isActive("/admin/profile") ? " is-active" : ""}`}>
+          <Link
+            href="/admin/profile"
+            className="admin-sidebar-profile__link"
+            title={t("navProfile")}
+          >
+            <div className="admin-sidebar-profile__avatar">
+              {user?.imageUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={user.imageUrl} alt="" />
+              ) : (
+                userInitials(user?.name, user?.phone)
+              )}
             </div>
-          )}
+            {!collapsed && (
+              <div className="admin-sidebar-profile__info">
+                <strong>{userDisplayName(user?.name, user?.phone)}</strong>
+                <small>{t("navProfile")}</small>
+              </div>
+            )}
+          </Link>
           {!collapsed && (
             <button
               type="button"

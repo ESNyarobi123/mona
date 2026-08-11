@@ -36,10 +36,10 @@ export const UI_MESSAGES = {
   fullPrice: { en: "Full price", sw: "Bei kamili" },
 
   // ── Landing modules ──
-  modulesTitle: { en: "Two stores, one platform", sw: "Maduka mawili, jukwaa moja" },
+  modulesTitle: { en: "Three services, One platform", sw: "Huduma tatu, jukwaa moja" },
   modulesSub: {
-    en: "Restaurant for hot meals. Grocery for your home. Same account, same checkout, same great service.",
-    sw: "Restaurant kwa chakula moto. Grocery kwa nyumba yako. Akaunti moja, checkout moja, huduma bora.",
+    en: "Restaurant for meals, Grocery for home, Catering for your events.",
+    sw: "Restaurant kwa milo, Grocery kwa nyumbani, Catering kwa shughuli zako.",
   },
   modRestTitle: { en: "Monana Restaurant", sw: "Monana Restaurant" },
   modRestDesc: {
@@ -210,6 +210,18 @@ export const UI_MESSAGES = {
     en: "When each window opens, we'll send your menu on WhatsApp so you can pick your meal.",
     sw: "Dirisha likifunguka, tutakutumia menyu kwenye WhatsApp uchague chakula.",
   },
+  restaurantMembershipEditMeals: {
+    en: "Meal notifications",
+    sw: "Arifa za muda wa chakula",
+  },
+  restaurantMembershipSlotsSaved: {
+    en: "Meal notification times updated.",
+    sw: "Muda wa arifa umesasishwa.",
+  },
+  saveMealSlots: {
+    en: "Save meal times",
+    sw: "Hifadhi muda wa chakula",
+  },
   membershipNone: { en: "You are not enrolled yet.", sw: "Bado hujajiunga." },
   membershipEnroll: { en: "Join subscription", sw: "Jiunge usajili" },
   membershipManage: { en: "My subscription", sw: "Usajili wangu" },
@@ -311,6 +323,32 @@ export const UI_MESSAGES = {
     sw: "Kiungo cha malipo kimeisha muda. Bofya hapa chini kupata kipya.",
   },
   resumePayment: { en: "Get payment link", sw: "Pata kiungo cha malipo" },
+  cancelActiveSubscriptionConfirm: {
+    en: "Cancel this active subscription? You can enroll again anytime.",
+    sw: "Sitisha usajili huu unaoendelea? Unaweza kujiunga tena wakati wowote.",
+  },
+  manageBasket: { en: "Edit basket", sw: "Hariri kikapu" },
+  saveBasket: { en: "Save basket", sw: "Hifadhi kikapu" },
+  addBasketItem: { en: "Add product", sw: "Ongeza bidhaa" },
+  removeBasketItem: { en: "Remove line", sw: "Ondoa mstari" },
+  basketUpdated: { en: "Basket updated.", sw: "Kikapu kimesasishwa." },
+  changePackage: { en: "Change package", sw: "Badilisha kifurushi" },
+  switchPackageConfirm: {
+    en: "Cancel this subscription and start enrollment for the new package?",
+    sw: "Sitisha usajili huu na uanze usajili wa kifurushi kipya?",
+  },
+  packageChangeHint: {
+    en: "To switch package, cancel current subscription then enroll a new one.",
+    sw: "Kubadilisha kifurushi, sitisha usajili wa sasa kisha jiunge upya.",
+  },
+  noAltPackages: {
+    en: "No other packages of this type are available right now.",
+    sw: "Hakuna vifurushi vingine vya aina hii vilivyopo sasa.",
+  },
+  canEditBasketNo: {
+    en: "Basket is locked for this cycle (cutoff passed).",
+    sw: "Kikapu kimefungwa kwa mzunguko huu (cutoff imepita).",
+  },
   cancelSubscription: { en: "Cancel subscription", sw: "Futa usajili" },
   cancelPendingSubscriptionConfirm: {
     en: "Cancel this subscription? You can enroll again later.",
@@ -353,6 +391,10 @@ export const UI_MESSAGES = {
   slotOpenHint: { en: "You can order for", sw: "Sasa unaweza ku-order kwa" },
   openMenu: { en: "open menu", sw: "fungua menyu" },
   noSlotOpen: { en: "No window open right now. See", sw: "Hakuna dirisha wazi sasa. Angalia" },
+  noSlotOpenSpecialHint: {
+    en: "You can still place a Special Order here:",
+    sw: "Bado unaweza kutuma Special Orders hapa:",
+  },
   slotSchedule: { en: "window schedule", sw: "ratiba ya dirisha" },
   slotWindowOpen: { en: "Window open", sw: "Dirisha wazi" },
   slotWindowClosed: { en: "The", sw: "Dirisha la" },
@@ -385,11 +427,11 @@ export const UI_MESSAGES = {
     sw: "Hujapenda Menu ya Leo au unahitaji chakula maalumu? Agiza Unachotaka Hapa!",
   },
   customOrderCtaSub: {
-    en: "Social Order — request a quote free. We send the price; you pay before we cook (no cash on delivery). Send 2.5–3 hours ahead.",
-    sw: "Social Order — omba nukuu bila kulipa. Tunakutumia bei; unalipa kabla ya kupika (hakuna Cash on Delivery). Tuma saa 2.5–3 mapema.",
+    en: "Special Orders — request a quote free. We send the price; you pay before we cook (no cash on delivery). Send 2.5–3 hours ahead.",
+    sw: "Special Orders — omba nukuu bila kulipa. Tunakutumia bei; unalipa kabla ya kupika (hakuna Cash on Delivery). Tuma saa 2.5–3 mapema.",
   },
-  customOrderCtaButton: { en: "Social Order", sw: "Social Order" },
-  customOrderPageTitle: { en: "Social Order", sw: "Social Order" },
+  customOrderCtaButton: { en: "Special Orders", sw: "Special Orders" },
+  customOrderPageTitle: { en: "Special Orders", sw: "Special Orders" },
   customOrderPageSub: {
     en: "Request for Quote: describe your dish — no payment yet. We'll send the price; you must pay before cooking starts.",
     sw: "Request for Quote: eleza chakula unachotaka — bado hulipi. Tutakutumia bei; lazima ulipe kabla kupika kuanza.",
@@ -418,18 +460,50 @@ export const UI_MESSAGES = {
     sw: "Ombi la nukuu limepokelewa! Tutakutumia bei kwenye simu — lipa ili kuanza kupikiwa.",
   },
   customOrderLoginRequired: {
-    en: "Sign in to send a Social Order request.",
-    sw: "Ingia kwanza ili kutuma ombi la Social Order.",
+    en: "Sign in to send a Special Orders request.",
+    sw: "Ingia kwanza ili kutuma ombi la Special Orders.",
   },
-  customOrderHubCard: { en: "Social Order", sw: "Social Order" },
+  customOrderHubCard: { en: "Special Orders", sw: "Special Orders" },
   customOrderHubCardSub: {
     en: "Request a quote — pay before we cook",
     sw: "Omba nukuu — lipa kabla ya kupika",
   },
-  customOrderNoCod: {
-    en: "No cash on delivery for Social Orders. Pay after we send the price.",
-    sw: "Social Order hairuhusu Cash on Delivery. Lipa baada ya kupokea bei.",
+  customOrderRequestsHubCard: { en: "My Special Orders", sw: "Special Orders zangu" },
+  customOrderRequestsHubCardSub: {
+    en: "Track quote status and pay when quoted",
+    sw: "Fuatilia hali ya nukuu na lipa ukitumiwa bei",
   },
+  customOrderNoCod: {
+    en: "No cash on delivery for Special Orders. Pay after we send the price.",
+    sw: "Special Orders hairuhusu Cash on Delivery. Lipa baada ya kupokea bei.",
+  },
+  customOrderRequestsTitle: { en: "My Special Order requests", sw: "Maombi yangu ya Special Orders" },
+  customOrderRequestsSub: {
+    en: "Track quote progress: awaiting price, quoted, and cooking statuses.",
+    sw: "Fuatilia hatua za ombi: inasubiri bei, bei imetumwa, na hatua za kupika.",
+  },
+  customOrderRequestsEmpty: {
+    en: "No Special Order requests yet. Send one and we'll quote you.",
+    sw: "Bado hujatuma ombi la Special Orders. Tuma ombi tukutumie bei.",
+  },
+  customOrderQuotedPrice: { en: "Quoted price", sw: "Bei uliyotumiwa" },
+  customOrderStatusPending: { en: "Awaiting price", sw: "Inasubiri bei" },
+  customOrderStatusQuoted: { en: "Quoted — pay to start cooking", sw: "Bei imetumwa — lipa ili kuanza kupika" },
+  customOrderStatusAwaitingPayConfirm: {
+    en: "Payment submitted — awaiting confirmation",
+    sw: "Malipo yametumwa — inasubiri uthibitisho",
+  },
+  customOrderStatusPaid: { en: "Paid — preparing", sw: "Imelipwa — inaandaliwa" },
+  customOrderCancelConfirm: {
+    en: "Cancel this Special Order request?",
+    sw: "Futa ombi hili la Special Orders?",
+  },
+  customOrderStatusAccepted: { en: "Accepted", sw: "Imekubaliwa" },
+  customOrderStatusPreparing: { en: "Preparing", sw: "Inaandaliwa" },
+  customOrderStatusReady: { en: "Ready", sw: "Tayari" },
+  customOrderStatusCompleted: { en: "Completed", sw: "Imekamilika" },
+  customOrderStatusRejected: { en: "Rejected", sw: "Imekataliwa" },
+  customOrderStatusCancelled: { en: "Cancelled", sw: "Imefutwa" },
 
   // ── Catering ──
   cateringHubTitle: { en: "Monana Catering", sw: "Monana Catering" },
@@ -500,6 +574,11 @@ export const UI_MESSAGES = {
   cateringKindQuote: { en: "Custom quote", sw: "Nukuu maalum" },
   cateringStatusQuoted: { en: "Awaiting payment", sw: "Inasubiri malipo" },
   cateringStatusPending: { en: "Awaiting price", sw: "Inasubiri bei" },
+  cateringStatusAwaitingPayConfirm: {
+    en: "Payment submitted — awaiting confirmation",
+    sw: "Malipo yametumwa — inasubiri uthibitisho",
+  },
+  cateringStatusConfirmed: { en: "Confirmed", sw: "Imethibitishwa" },
   navCateringOrders: { en: "Catering orders", sw: "Oda catering" },
   planCatering: { en: "Plan catering", sw: "Panga catering" },
   modCatTitle: { en: "Monana Catering", sw: "Monana Catering" },
@@ -700,6 +779,19 @@ export const UI_MESSAGES = {
   saveChanges: { en: "Save changes", sw: "Hifadhi mabadiliko" },
   saving: { en: "Saving…", sw: "Inahifadhi…" },
   profileUpdated: { en: "Profile updated.", sw: "Wasifu umesasishwa." },
+  changePassword: { en: "Change password", sw: "Badilisha nywila" },
+  changePasswordSub: {
+    en: "Enter your current password, then choose a new one.",
+    sw: "Weka nywila ya sasa, kisha chagua mpya.",
+  },
+  currentPassword: { en: "Current password", sw: "Nywila ya sasa" },
+  newPassword: { en: "New password", sw: "Nywila mpya" },
+  updatePassword: { en: "Update password", sw: "Sasisha nywila" },
+  updatingPassword: { en: "Updating…", sw: "Inasasisha…" },
+  passwordChanged: { en: "Password changed successfully.", sw: "Nywila imebadilishwa." },
+  passwordMismatch: { en: "Passwords do not match.", sw: "Nywila hazifanani." },
+  showPassword: { en: "Show password", sw: "Onyesha nywila" },
+  hidePassword: { en: "Hide password", sw: "Ficha nywila" },
   languageSection: { en: "Language", sw: "Lugha" },
   languageSectionSub: { en: "Choose your preferred language across the app.", sw: "Chagua lugha unayopendelea kwenye app." },
   accountSince: { en: "Member since", sw: "Akaunti tangu" },
@@ -717,13 +809,13 @@ export const UI_MESSAGES = {
   },
   faq1q: { en: "How do I place an order?", sw: "Ninawezaje kuweka oda?" },
   faq1a: {
-    en: "Choose Restaurant or Grocery, add items to cart, checkout with your address. Or use our WhatsApp bot.",
-    sw: "Chagua Restaurant au Grocery, ongeza cart, maliza checkout na anwani. Au tumia WhatsApp bot.",
+    en: "Choose Restaurant, Grocery, or Catering. Add meals/products to cart, or book a catering package / request a quote. Checkout on web or use our WhatsApp bot.",
+    sw: "Chagua Restaurant, Grocery, au Catering. Ongeza chakula/bidhaa kwenye cart, au agiza kifurushi cha catering / omba nukuu. Maliza checkout kwenye web au tumia WhatsApp bot.",
   },
   faq2q: { en: "How do I pay?", sw: "Ninalipaje?" },
   faq2a: {
-    en: "We use Lipa Namba (manual payment). After ordering you'll get instructions — pay then submit your reference.",
-    sw: "Tunatumia Lipa Namba. Baada ya oda utapata maelekezo — lipa kisha tuma reference.",
+    en: "We use Lipa Namba (manual payment). After ordering you'll get instructions — pay then submit your reference. Catering and Special Orders must be paid before they are confirmed (no cash on delivery).",
+    sw: "Tunatumia Lipa Namba. Baada ya oda utapata maelekezo — lipa kisha tuma reference. Catering na Special Orders zinathibitishwa baada tu ya malipo (hakuna Cash on Delivery).",
   },
   faq3q: { en: "What is a restaurant order window?", sw: "Dirisha la restaurant ni nini?" },
   faq3a: {
@@ -735,10 +827,27 @@ export const UI_MESSAGES = {
     en: "Choose Packages under Grocery, join weekly or monthly plan, and set your default basket.",
     sw: "Chagua Vifurushi chini ya Grocery, jiunge na mpango wa wiki au mwezi, na weka kikapu chako.",
   },
+  faq5q: { en: "How does Catering work?", sw: "Catering inafanyaje kazi?" },
+  faq5a: {
+    en: "Go to Catering → pick a per-person package (total = price × guests) or send a custom quote for your event. Plan at least 48 hours ahead. We send a price for custom requests; you must pay with Lipa Namba before the order is confirmed. Track requests under My catering.",
+    sw: "Nenda Catering → chagua kifurushi (jumla = bei × idadi ya watu) au tuma ombi la nukuu kwa shughuli yako. Panga angalau masaa 48 kabla. Kwa nukuu maalum tutakutumia bei; lazima ulipe kwa Lipa Namba kabla oda haijathibitishwa. Fuatilia maombi kwenye Catering zangu.",
+  },
+  faq6q: { en: "What are Special Orders?", sw: "Special Orders ni nini?" },
+  faq6a: {
+    en: "Under Restaurant → Special Orders you can request a custom dish (not on the daily menu). We send a price; you pay before cooking starts. No cash on delivery.",
+    sw: "Chini ya Restaurant → Special Orders unaweza kuomba chakula maalum (kisicho kwenye menyu ya siku). Tutakutumia bei; lipa kabla kupika kuanza. Hakuna Cash on Delivery.",
+  },
   chatWith: { en: "Chat with", sw: "Chat na" },
   openWhatsappBot: { en: "Open Monana bot chat — order and help instantly.", sw: "Fungua chat ya Monana bot — order na msaada papo kwa papo." },
   copy: { en: "Copy", sw: "Nakili" },
   copied: { en: "Copied!", sw: "Imenakiliwa!" },
+  supportCateringTitle: { en: "Monana Catering", sw: "Monana Catering" },
+  supportCateringBody: {
+    en: "Packages for meetings & events, or a custom quote. Pay to confirm — open the Catering page to get started.",
+    sw: "Vifurushi kwa mikutano & shughuli, au nukuu maalum. Lipa ili kuthibitisha — fungua ukurasa wa Catering kuanza.",
+  },
+  supportCateringCta: { en: "Open Catering", sw: "Fungua Catering" },
+  supportCateringMy: { en: "My catering requests", sw: "Maombi yangu ya catering" },
 
   // ── Checkout extras ──
   optional: { en: "(optional)", sw: "(si lazima)" },
@@ -843,6 +952,35 @@ export const UI_MESSAGES = {
   },
   password: { en: "Password", sw: "Nywila" },
   passwordPlaceholder: { en: "Enter your password", sw: "Weka nywila yako" },
+  forgotPasswordLink: { en: "Forgot password?", sw: "Umesahau nywila?" },
+  forgotPasswordEyebrow: { en: "Account help", sw: "Msaada wa akaunti" },
+  forgotPasswordTitle: { en: "Forgot password", sw: "Umesahau nywila" },
+  forgotPasswordSub: {
+    en: "Enter the phone number on your Monana account. We’ll send a 6-digit code on WhatsApp.",
+    sw: "Weka namba ya simu ya akaunti yako ya Monana. Tutakutumia msimbo wa tarakimu 6 kwenye WhatsApp.",
+  },
+  sendResetCode: { en: "Send WhatsApp code", sw: "Tuma msimbo WhatsApp" },
+  sendingCode: { en: "Sending…", sw: "Inatuma…" },
+  redirectingReset: { en: "Opening reset form…", sw: "Inafungua fomu ya kuweka nywila…" },
+  forgotPasswordSent: {
+    en: "If this number is on Monana, you will receive a WhatsApp code shortly.",
+    sw: "Ikiwa namba iko kwenye Monana, utapokea msimbo wa WhatsApp hivi karibuni.",
+  },
+  resetPasswordEyebrow: { en: "Reset", sw: "Weka upya" },
+  resetPasswordTitle: { en: "Set a new password", sw: "Weka nywila mpya" },
+  resetPasswordSub: {
+    en: "Enter the code from WhatsApp and choose your new password.",
+    sw: "Weka msimbo kutoka WhatsApp na chagua nywila mpya.",
+  },
+  resetCodeLabel: { en: "WhatsApp code", sw: "Msimbo wa WhatsApp" },
+  resetCodeHint: { en: "6 digits — valid for 15 minutes.", sw: "Tarakimu 6 — zinatumika dakika 15." },
+  resendResetCode: { en: "Resend code", sw: "Tuma msimbo tena" },
+  backToSignIn: { en: "Back to sign in", sw: "Rudi kuingia" },
+  passwordResetSuccess: { en: "Password updated!", sw: "Nywila imesasishwa!" },
+  signInAfterReset: {
+    en: "Sign in with your phone number and new password.",
+    sw: "Ingia kwa namba ya simu na nywila mpya.",
+  },
   signingIn: { en: "Signing in…", sw: "Inaingia…" },
   newHere: { en: "New here?", sw: "Mgeni?" },
   createAccount: { en: "Create an account", sw: "Fungua akaunti" },

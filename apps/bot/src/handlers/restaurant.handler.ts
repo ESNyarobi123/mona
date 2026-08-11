@@ -53,11 +53,12 @@ function formatRestaurantSchedule(slots: SlotRow[]) {
 
 export function formatAllWindowsClosedMessage(locale: "en" | "sw", payload: SlotsPayload) {
   const { slots, nextOpen, timeDisplay } = payload;
+  const specialHint = locale === "sw" ? "📝 Bado unaweza kuomba *Special Orders* — jibu *4*." : "📝 You can still request a *Special Order* — reply *4*.";
   if (!nextOpen) {
     const schedule = formatRestaurantSchedule(slots);
     return locale === "sw"
-      ? `⛔ *Dirisha zote za ku-order zimefungwa kwa sasa.*\n\n🕒 Saa sasa (EAT): *${timeDisplay}*\n\n*Ratiba ya dirisha:*\n${schedule}`
-      : `⛔ *All order windows are closed right now.*\n\n🕒 Current time (EAT): *${timeDisplay}*\n\n*Schedule:*\n${schedule}`;
+      ? `⛔ *Dirisha zote za ku-order zimefungwa kwa sasa.*\n\n🕒 Saa sasa (EAT): *${timeDisplay}*\n\n*Ratiba ya dirisha:*\n${schedule}\n\n${specialHint}`
+      : `⛔ *All order windows are closed right now.*\n\n🕒 Current time (EAT): *${timeDisplay}*\n\n*Schedule:*\n${schedule}\n\n${specialHint}`;
   }
   return botMessage(locale, "restaurantAllWindowsClosed", {
     time: timeDisplay,
@@ -66,6 +67,7 @@ export function formatAllWindowsClosedMessage(locale: "en" | "sw", payload: Slot
     nextTime: nextOpen.opensAtTime,
     nextWindow: nextOpen.orderWindow,
     nextDelivers: nextOpen.deliversFor,
+    specialHint,
   });
 }
 
@@ -104,7 +106,25 @@ export async function handleRestaurantHub(phone: string, choice: string, reply: 
   }
   if (choice === "2") return startRestaurantMembership(phone, reply);
   if (choice === "3") return showRestaurantMembershipStatus(phone, reply);
+  if (choice === "4") return startRestaurantSpecialOrder(phone, reply);
   return reply(withBack(phone, botMessage(locale, "restaurantHubTitle")));
+}
+
+export async function startRestaurantSpecialOrder(phone: string, reply: Reply) {
+  const locale = sessionLocale(phone);
+  patchSession(phone, "ASK_SPECIAL_ORDER_DISH", {
+    module: "RESTAURANT",
+    cart: [],
+    specialOrderDishName: undefined,
+    specialOrderRequirements: undefined,
+    specialOrderRequestedFor: undefined,
+  });
+  return reply(
+    withBack(
+      phone,
+      `${botMessage(locale, "restaurantSpecialOrderIntro")}\n\n${botMessage(locale, "restaurantSpecialOrderAskDish")}`
+    )
+  );
 }
 
 export async function startRestaurantMembership(phone: string, reply: Reply) {

@@ -12,7 +12,7 @@ export function CustomOrderCta({ compact = false }: { compact?: boolean }) {
       aria-label={t("customOrderPageTitle")}
     >
       <div className="custom-order-cta__copy">
-        <p className="custom-order-cta__eyebrow">Social Order</p>
+        <p className="custom-order-cta__eyebrow">{t("customOrderPageTitle")}</p>
         <h2 className="custom-order-cta__title">{t("customOrderCtaTitle")}</h2>
         {!compact ? <p className="custom-order-cta__sub">{t("customOrderCtaSub")}</p> : null}
       </div>

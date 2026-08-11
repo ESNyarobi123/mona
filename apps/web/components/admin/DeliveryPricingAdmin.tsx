@@ -61,7 +61,7 @@ export function DeliveryPricingAdmin({ module, titleKey, leadKey }: Props) {
     setLoading(true);
     Promise.all([
       apiGet<PricingConfig>(`/api/admin/delivery-pricing?module=${module}`),
-      module === "GROCERY" ? apiGet<DeliveryZone[]>("/api/admin/grocery/delivery-zones") : Promise.resolve([]),
+      apiGet<DeliveryZone[]>("/api/admin/grocery/delivery-zones"),
     ])
       .then(([pricing, zoneRows]) => {
         setConfig(pricing);
@@ -222,7 +222,7 @@ export function DeliveryPricingAdmin({ module, titleKey, leadKey }: Props) {
         </button>
       </AdminPanel>
 
-      {module === "GROCERY" && config.mode === "ZONE" ? (
+      {config.mode === "ZONE" ? (
         <AdminPanel title={t("deliveryZonesTitle")}>
           <p className="admin-panel__lead">{t("deliveryZonesLead")}</p>
           {zones.length === 0 ? (

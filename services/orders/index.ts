@@ -17,11 +17,11 @@ const STATUS_FLOW_GROCERY: Record<OrderStatus, OrderStatus[]> = {
   CANCELLED: [],
 };
 
-/** Restaurant: skip delivery step (pickup / dine-in). */
+/** Restaurant + Catering: prep → on the way → delivered. */
 const STATUS_FLOW_RESTAURANT: Record<OrderStatus, OrderStatus[]> = {
   PENDING: ["CONFIRMED", "CANCELLED"],
   CONFIRMED: ["PREPARING", "CANCELLED"],
-  PREPARING: ["DELIVERED", "CANCELLED"],
+  PREPARING: ["ON_THE_WAY", "CANCELLED"],
   ON_THE_WAY: ["DELIVERED", "CANCELLED"],
   DELIVERED: [],
   CANCELLED: [],
@@ -29,7 +29,6 @@ const STATUS_FLOW_RESTAURANT: Record<OrderStatus, OrderStatus[]> = {
 
 function statusFlow(module: BusinessModule): Record<OrderStatus, OrderStatus[]> {
   if (module === "GROCERY") return STATUS_FLOW_GROCERY;
-  // Restaurant + Catering: no ON_THE_WAY step required
   return STATUS_FLOW_RESTAURANT;
 }
 

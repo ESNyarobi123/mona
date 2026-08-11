@@ -87,6 +87,22 @@ export async function cancelRestaurantMembership(id: string) {
   });
 }
 
+export async function updateRestaurantMembershipMealSlots(id: string, mealSlots: MealSlot[]) {
+  const sub = await prisma.restaurantSubscription.findUnique({ where: { id } });
+  if (!sub) throw new Error("Uanachama haupatikani");
+  if (sub.status === "CANCELLED") throw new Error("Uanachama huu umeondolewa");
+
+  const uniqueSlots = [...new Set(mealSlots)] as MealSlot[];
+  for (const slot of uniqueSlots) {
+    if (!ALL_SLOTS.includes(slot)) throw new Error(`Slot si sahihi: ${slot}`);
+  }
+
+  return prisma.restaurantSubscription.update({
+    where: { id },
+    data: { mealSlots: uniqueSlots },
+  });
+}
+
 export function getRestaurantMembershipSetup(locale: "en" | "sw" = "en") {
   const slots = [
     { slot: "BREAKFAST" as const, label: locale === "sw" ? "Asubuhi" : "Breakfast", emoji: "🌅" },

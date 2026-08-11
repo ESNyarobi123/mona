@@ -19,6 +19,7 @@ export async function getOverviewStats() {
     usersTotal,
     restaurantOrdersToday,
     groceryOrdersToday,
+    cateringOrdersToday,
     recentOrders,
     recentPayments,
   ] = await Promise.all([
@@ -30,6 +31,7 @@ export async function getOverviewStats() {
     prisma.user.count(),
     prisma.order.count({ where: { module: "RESTAURANT", createdAt: { gte: today } } }),
     prisma.order.count({ where: { module: "GROCERY", createdAt: { gte: today } } }),
+    prisma.order.count({ where: { module: "CATERING", createdAt: { gte: today } } }),
     prisma.order.findMany({
       take: 8,
       orderBy: { createdAt: "desc" },
@@ -57,6 +59,7 @@ export async function getOverviewStats() {
     usersTotal,
     restaurantOrdersToday,
     groceryOrdersToday,
+    cateringOrdersToday,
     revenueToday: Number(revenueToday._sum.total ?? 0),
     recentOrders,
     recentPayments,

@@ -71,7 +71,10 @@ function lineTotal(item: OrderItem) {
 }
 
 function moduleIcon(module: string) {
-  return module === "RESTAURANT" ? "🍽️" : "🛒";
+  if (module === "RESTAURANT") return "🍽️";
+  if (module === "GROCERY") return "🛒";
+  if (module === "CATERING") return "🍱";
+  return "📦";
 }
 
 type OrderGridProps = {
@@ -246,6 +249,7 @@ export default function AdminOrdersPage() {
   const searchParams = useSearchParams();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("");
+  const [moduleFilter, setModuleFilter] = useState("");
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -254,13 +258,20 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     const q = searchParams.get("q");
-    if (q) setSearch(q);
+    setSearch(q ?? "");
+    const module = searchParams.get("module");
+    if (module && ["RESTAURANT", "GROCERY", "CATERING"].includes(module)) {
+      setModuleFilter(module);
+    } else {
+      setModuleFilter("");
+    }
   }, [searchParams]);
 
   function load() {
     setLoading(true);
     const q = new URLSearchParams({ limit: "100" });
     if (filter) q.set("status", filter);
+    if (moduleFilter) q.set("module", moduleFilter);
     if (search.trim()) q.set("q", search.trim());
     apiGet<OrdersResponse>(`/api/orders?${q}`)
       .then((data) => setOrders(normalizeApiList(data)))
@@ -270,16 +281,17 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     load();
-  }, [filter, search]);
+  }, [filter, moduleFilter, search]);
 
   const stats = useMemo(() => {
     const pending = orders.filter((o) => PENDING_STATUSES.has(o.status)).length;
     const payLaterPending = orders.filter((o) => needsPayOnDeliveryApproval(o)).length;
     const restaurant = orders.filter((o) => o.module === "RESTAURANT").length;
     const grocery = orders.filter((o) => o.module === "GROCERY").length;
+    const catering = orders.filter((o) => o.module === "CATERING").length;
     const value = orders.reduce((sum, o) => sum + Number(o.total), 0);
     const delivered = orders.filter((o) => o.status === "DELIVERED").length;
-    return { pending, payLaterPending, restaurant, grocery, value, delivered };
+    return { pending, payLaterPending, restaurant, grocery, catering, value, delivered };
   }, [orders]);
 
   const restaurantOrders = useMemo(
@@ -287,6 +299,7 @@ export default function AdminOrdersPage() {
     [orders]
   );
   const groceryOrders = useMemo(() => orders.filter((o) => o.module === "GROCERY"), [orders]);
+  const cateringOrders = useMemo(() => orders.filter((o) => o.module === "CATERING"), [orders]);
 
   async function advance(id: string, status: string) {
     const next = NEXT_STATUS[status];
@@ -386,7 +399,7 @@ export default function AdminOrdersPage() {
         <AdminKpiCard
           label={t("restaurantOrders")}
           value={stats.restaurant}
-          trend={tf("groceryCount", { n: stats.grocery })}
+          trend={`${t("navGrocery")} ${stats.grocery} · ${t("navCatering")} ${stats.catering}`}
           tone="restaurant"
         />
         <AdminKpiCard
@@ -410,6 +423,19 @@ export default function AdminOrdersPage() {
                 aria-label={t("searchOrdersAria")}
               />
             </div>
+          </div>
+
+          <div className="admin-order-status-chips" role="group" aria-label={t("module")}>
+            {["", "RESTAURANT", "GROCERY", "CATERING"].map((module) => (
+              <button
+                key={module || "all"}
+                type="button"
+                className={`admin-order-status-chip${moduleFilter === module ? " is-active" : ""}`}
+                onClick={() => setModuleFilter(module)}
+              >
+                {module ? t(module === "RESTAURANT" ? "navRestaurant" : module === "GROCERY" ? "navGrocery" : "navCatering") : t("allModules")}
+              </button>
+            ))}
           </div>
 
           <div className="admin-order-status-chips" role="group" aria-label={t("filterStatusAria")}>
@@ -495,6 +521,33 @@ export default function AdminOrdersPage() {
               />
             )}
           </AdminPanel>
+
+          <AdminPanel
+            title={t("cateringOrdersSection")}
+            badge={tf("shownCount", { n: cateringOrders.length })}
+            className="admin-orders-section admin-orders-section--catering"
+          >
+            {cateringOrders.length === 0 ? (
+              <div className="admin-order-empty admin-order-empty--section">
+                <span aria-hidden>🍱</span>
+                <p>{t("noCateringOrders")}</p>
+              </div>
+            ) : (
+              <OrderGrid
+                items={cateringOrders}
+                busyId={busyId}
+                locale={locale}
+                t={t}
+                tf={tf}
+                slotLabel={slotLabel}
+                onSelect={setSelected}
+                onAdvance={advance}
+                onCancel={cancel}
+                onApproveRequest={approveRequest}
+                onRejectRequest={rejectRequest}
+              />
+            )}
+          </AdminPanel>
         </div>
       )}
 
@@ -557,7 +610,11 @@ export default function AdminOrdersPage() {
                   {selected.items.map((item, idx) => (
                     <li key={`${item.name}-${idx}`}>
                       <span className="admin-order-detail__item-icon" aria-hidden>
-                        {selected.module === "RESTAURANT" ? "🍽️" : "🏷️"}
+                        {selected.module === "RESTAURANT"
+                          ? "🍽️"
+                          : selected.module === "CATERING"
+                            ? "🍱"
+                            : "🏷️"}
                       </span>
                       <span className="admin-order-detail__item-copy">
                         <strong>{item.name}</strong>

@@ -69,9 +69,7 @@ export function SiteFooter() {
         </div>
       </div>
 
-      <div className="landing-footer__bottom">
-        © {new Date().getFullYear()} Monana. {t("footerCopy")}
-      </div>
+      <div className="landing-footer__bottom">©2026 Monana Food.</div>
     </footer>
   );
 }

@@ -52,7 +52,10 @@ function paymentRef(id: string) {
 }
 
 function moduleIcon(module: string) {
-  return module === "RESTAURANT" ? "🍽️" : "🛒";
+  if (module === "RESTAURANT") return "🍽️";
+  if (module === "GROCERY") return "🛒";
+  if (module === "CATERING") return "🍱";
+  return "💳";
 }
 
 function statusPillClass(status: string) {
@@ -184,6 +187,7 @@ export default function AdminPaymentsPage() {
   const searchParams = useSearchParams();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [filter, setFilter] = useState("AWAITING_CONFIRMATION");
+  const [moduleFilter, setModuleFilter] = useState("");
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -192,13 +196,20 @@ export default function AdminPaymentsPage() {
 
   useEffect(() => {
     const q = searchParams.get("q");
-    if (q) setSearch(q);
+    setSearch(q ?? "");
+    const module = searchParams.get("module");
+    if (module && ["RESTAURANT", "GROCERY", "CATERING"].includes(module)) {
+      setModuleFilter(module);
+    } else {
+      setModuleFilter("");
+    }
   }, [searchParams]);
 
   function load() {
     setLoading(true);
     const q = new URLSearchParams({ limit: "100" });
     if (filter) q.set("status", filter);
+    if (moduleFilter) q.set("module", moduleFilter);
     if (search.trim()) q.set("q", search.trim());
     apiGet<PaymentsResponse>(`/api/payments?${q}`)
       .then((data) => setPayments(normalizeApiList(data)))
@@ -208,7 +219,7 @@ export default function AdminPaymentsPage() {
 
   useEffect(() => {
     load();
-  }, [filter, search]);
+  }, [filter, moduleFilter, search]);
 
   const stats = useMemo(() => {
     const awaiting = payments.filter((p) => p.status === "AWAITING_CONFIRMATION").length;
@@ -217,7 +228,8 @@ export default function AdminPaymentsPage() {
     const total = payments.reduce((sum, p) => sum + Number(p.amount), 0);
     const restaurant = payments.filter((p) => p.order.module === "RESTAURANT").length;
     const grocery = payments.filter((p) => p.order.module === "GROCERY").length;
-    return { awaiting, paid, failed, total, restaurant, grocery };
+    const catering = payments.filter((p) => p.order.module === "CATERING").length;
+    return { awaiting, paid, failed, total, restaurant, grocery, catering };
   }, [payments]);
 
   const restaurantPayments = useMemo(
@@ -226,6 +238,10 @@ export default function AdminPaymentsPage() {
   );
   const groceryPayments = useMemo(
     () => payments.filter((p) => p.order.module === "GROCERY"),
+    [payments]
+  );
+  const cateringPayments = useMemo(
+    () => payments.filter((p) => p.order.module === "CATERING"),
     [payments]
   );
 
@@ -289,7 +305,7 @@ export default function AdminPaymentsPage() {
         <AdminKpiCard
           label={t("restaurantPayments")}
           value={stats.restaurant}
-          trend={tf("groceryCount", { n: stats.grocery })}
+          trend={`${t("navGrocery")} ${stats.grocery} · ${t("navCatering")} ${stats.catering}`}
           tone="restaurant"
         />
         <AdminKpiCard
@@ -313,6 +329,19 @@ export default function AdminPaymentsPage() {
                 aria-label={t("searchPaymentsAria")}
               />
             </div>
+          </div>
+
+          <div className="admin-order-status-chips" role="group" aria-label={t("module")}>
+            {["", "RESTAURANT", "GROCERY", "CATERING"].map((module) => (
+              <button
+                key={module || "all"}
+                type="button"
+                className={`admin-order-status-chip${moduleFilter === module ? " is-active" : ""}`}
+                onClick={() => setModuleFilter(module)}
+              >
+                {module ? t(module === "RESTAURANT" ? "navRestaurant" : module === "GROCERY" ? "navGrocery" : "navCatering") : t("allModules")}
+              </button>
+            ))}
           </div>
 
           <div className="admin-order-status-chips" role="group" aria-label={t("filterPaymentStatusAria")}>
@@ -384,6 +413,28 @@ export default function AdminPaymentsPage() {
             ) : (
               <PaymentGrid
                 items={groceryPayments}
+                busyId={busyId}
+                locale={locale}
+                t={t}
+                onSelect={setSelected}
+                onConfirm={confirmPayment}
+              />
+            )}
+          </AdminPanel>
+
+          <AdminPanel
+            title={t("cateringPayments")}
+            badge={tf("shownCount", { n: cateringPayments.length })}
+            className="admin-payments-section admin-payments-section--catering"
+          >
+            {cateringPayments.length === 0 ? (
+              <div className="admin-order-empty admin-order-empty--section">
+                <span aria-hidden>🍱</span>
+                <p>{t("noCateringPayments")}</p>
+              </div>
+            ) : (
+              <PaymentGrid
+                items={cateringPayments}
                 busyId={busyId}
                 locale={locale}
                 t={t}
@@ -496,7 +547,10 @@ export default function AdminPaymentsPage() {
                       </button>
                     </>
                   ) : null}
-                  <Link href={`/admin/orders?q=${selected.order.id.slice(-6)}`} className="admin-btn secondary">
+                  <Link
+                    href={`/admin/orders?module=${selected.order.module}&q=${selected.order.id.slice(-6)}`}
+                    className="admin-btn secondary"
+                  >
                     {t("viewOrderDetails")}
                   </Link>
                   <button type="button" className="admin-btn secondary" onClick={() => setSelected(null)}>

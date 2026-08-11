@@ -223,6 +223,23 @@ export const api = {
       timeDisplay: string;
     }>(`/restaurant/slots?locale=${locale}`),
 
+  createSpecialOrder: (body: {
+    userId: string;
+    dishName: string;
+    specialRequirements?: string;
+    requestedFor: string;
+    address?: string;
+  }) =>
+    request<{
+      id: string;
+      status: string;
+      dishName: string;
+      requestedFor: string;
+    }>("/restaurant/social-orders", {
+      method: "POST",
+      body: JSON.stringify({ ...body, channel: "WHATSAPP" }),
+    }),
+
   createOrder: (body: {
     userId: string;
     module: BusinessModule;

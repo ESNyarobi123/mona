@@ -119,6 +119,14 @@ export async function handleMessage(incoming: IncomingMessage, reply: Reply): Pr
       return handleSubAddress(phone, text, reply);
     case "CHOOSING_RESTAURANT_HUB":
       return handleRestaurantHub(phone, lower, reply);
+    case "ASK_SPECIAL_ORDER_DISH":
+      return handleSpecialOrderDish(phone, text, reply);
+    case "ASK_SPECIAL_ORDER_REQUIREMENTS":
+      return handleSpecialOrderRequirements(phone, text, reply);
+    case "ASK_SPECIAL_ORDER_TIME":
+      return handleSpecialOrderTime(phone, text, reply);
+    case "ASK_SPECIAL_ORDER_ADDRESS":
+      return handleSpecialOrderAddress(phone, text, reply);
     case "CHOOSING_RESTAURANT_MEMBERSHIP_SLOTS":
       return handleRestaurantMembershipSlots(phone, text, reply);
     case "ASK_RESTAURANT_MEMBERSHIP_ADDRESS":
@@ -342,6 +350,97 @@ async function handleSlotChoice(phone: string, choice: string, reply: Reply) {
   if (!items.length) return reply(msg(phone, "emptyCatalog"));
   patchSession(phone, "CHOOSING", { mealSlot: slot, menuItems: items, cart: [], membershipMode: false });
   return reply(renderProductList(items, locale, `${moduleLabel("RESTAURANT", locale).emoji} ${moduleLabel("RESTAURANT", locale).title} — ${slotEntry.label}`));
+}
+
+function parseSpecialOrderRequestedFor(raw: string): string | null {
+  const normalized = raw.trim().replace("T", " ");
+  const match = normalized.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{1,2}):(\d{2})$/);
+  if (!match) return null;
+
+  const [, y, m, d, h, min] = match;
+  const hour = Number(h);
+  const minute = Number(min);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null;
+
+  const iso = `${y}-${m}-${d}T${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}:00+03:00`;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString();
+}
+
+async function handleSpecialOrderDish(phone: string, text: string, reply: Reply) {
+  const locale = sessionLocale(phone);
+  const dishName = text.trim();
+  if (dishName.length < 2) {
+    return reply(withBack(phone, botMessage(locale, "restaurantSpecialOrderAskDish")));
+  }
+  patchSession(phone, "ASK_SPECIAL_ORDER_REQUIREMENTS", { specialOrderDishName: dishName });
+  return reply(withBack(phone, botMessage(locale, "restaurantSpecialOrderAskRequirements")));
+}
+
+async function handleSpecialOrderRequirements(phone: string, text: string, reply: Reply) {
+  const locale = sessionLocale(phone);
+  const trimmed = text.trim();
+  const specialOrderRequirements =
+    trimmed === "-" || trimmed.toLowerCase() === "skip" || trimmed.toLowerCase() === "ruka"
+      ? undefined
+      : trimmed;
+  patchSession(phone, "ASK_SPECIAL_ORDER_TIME", { specialOrderRequirements });
+  return reply(withBack(phone, botMessage(locale, "restaurantSpecialOrderAskTime")));
+}
+
+async function handleSpecialOrderTime(phone: string, text: string, reply: Reply) {
+  const locale = sessionLocale(phone);
+  const requestedFor = parseSpecialOrderRequestedFor(text);
+  if (!requestedFor) {
+    return reply(withBack(phone, botMessage(locale, "restaurantSpecialOrderTimeInvalid")));
+  }
+  patchSession(phone, "ASK_SPECIAL_ORDER_ADDRESS", { specialOrderRequestedFor: requestedFor });
+  return reply(withBack(phone, botMessage(locale, "restaurantSpecialOrderAskAddress")));
+}
+
+async function handleSpecialOrderAddress(phone: string, text: string, reply: Reply) {
+  const session = getSession(phone);
+  const locale = sessionLocale(phone);
+  const { userId, specialOrderDishName, specialOrderRequestedFor, specialOrderRequirements } = session.data;
+  if (!userId || !specialOrderDishName || !specialOrderRequestedFor) {
+    patchSession(phone, "CHOOSING_RESTAURANT_HUB", {
+      module: "RESTAURANT",
+      cart: [],
+      specialOrderDishName: undefined,
+      specialOrderRequirements: undefined,
+      specialOrderRequestedFor: undefined,
+    });
+    return reply(withBack(phone, botMessage(locale, "restaurantHubTitle")));
+  }
+
+  const trimmed = text.trim();
+  const address =
+    trimmed === "-" || trimmed.toLowerCase() === "skip" || trimmed.toLowerCase() === "ruka"
+      ? undefined
+      : trimmed;
+
+  try {
+    await api.createSpecialOrder({
+      userId,
+      dishName: specialOrderDishName,
+      specialRequirements: specialOrderRequirements,
+      requestedFor: specialOrderRequestedFor,
+      address,
+    });
+    patchSession(phone, "CHOOSING_RESTAURANT_HUB", {
+      module: "RESTAURANT",
+      cart: [],
+      specialOrderDishName: undefined,
+      specialOrderRequirements: undefined,
+      specialOrderRequestedFor: undefined,
+    });
+    return reply(withBack(phone, botMessage(locale, "restaurantSpecialOrderCreated")));
+  } catch (err) {
+    const errText = err instanceof Error ? err.message : botMessage(locale, "restaurantSpecialOrderFailed");
+    patchSession(phone, "ASK_SPECIAL_ORDER_TIME");
+    return reply(withBack(phone, `❌ ${errText}\n\n${botMessage(locale, "restaurantSpecialOrderAskTime")}`));
+  }
 }
 
 async function handleMembershipPlan(phone: string, choice: string, reply: Reply) {

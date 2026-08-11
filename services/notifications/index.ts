@@ -36,6 +36,23 @@ export async function notifyCustomer(phone: string, text: string): Promise<boole
   return sendMessage(phone, text);
 }
 
+/** WhatsApp OTP for web password reset / set. */
+export async function notifyPasswordResetCode(params: {
+  phone: string;
+  code: string;
+  locale?: "en" | "sw";
+  expiresMinutes?: number;
+  name?: string | null;
+}): Promise<boolean> {
+  const mins = params.expiresMinutes ?? 15;
+  const greeting = params.name?.trim() ? `${params.name.trim()}, ` : "";
+  const text =
+    params.locale === "sw"
+      ? `${greeting}Msimbo wako wa kubadilisha nywila ya Monana ni: *${params.code}*\n\nMsimbo unaisha baada ya dakika ${mins}. Usishiriki msimbo na mtu yeyote.`
+      : `${greeting}Your Monana password reset code is: *${params.code}*\n\nThis code expires in ${mins} minutes. Do not share it with anyone.`;
+  return sendMessage(params.phone, text);
+}
+
 export async function notifyAdmin(text: string): Promise<boolean> {
   const admin = await getAdminWhatsappNumber();
   if (!admin) {
@@ -200,7 +217,7 @@ export async function notifyAdminCustomOrder(params: {
     timeZone: "Africa/Dar_es_Salaam",
   });
   return notifyAdmin(
-    `🍲 *Social Order mpya* #${shortId(params.id)}\n` +
+    `🍲 *Special Orders mpya* #${shortId(params.id)}\n` +
       `Huduma: Monana Food (Request for Quote)\n` +
       `Mteja: ${params.customer?.name ?? "—"} (${params.customer?.phone ?? "?"})\n` +
       `Chakula: *${params.dishName}*\n` +
@@ -225,8 +242,8 @@ export async function notifyCustomerSocialOrderQuote(params: {
   const locale = params.locale === "en" ? "en" : "sw";
   const text =
     locale === "en"
-      ? `🍲 *Social Order*\nYour order for *${params.dishName}* has been received and will cost *${amount}*.\nTap here to pay so we can start cooking:\n${params.payUrl}\n\nCash on delivery is not available for Social Orders.`
-      : `🍲 *Social Order*\nOda yako ya *${params.dishName}* imepokelewa na itagharimu *${amount}*. Bonyeza hapa kulipia ili kuanza kupikiwa:\n${params.payUrl}\n\nHuduma hii hairuhusu Cash on Delivery — lipa kabla ya kupika.`;
+      ? `🍲 *Special Orders*\nYour order for *${params.dishName}* has been received and will cost *${amount}*.\nTap here to pay so we can start cooking:\n${params.payUrl}\n\nCash on delivery is not available for Special Orders.`
+      : `🍲 *Special Orders*\nOda yako ya *${params.dishName}* imepokelewa na itagharimu *${amount}*. Bonyeza hapa kulipia ili kuanza kupikiwa:\n${params.payUrl}\n\nHuduma hii hairuhusu Cash on Delivery — lipa kabla ya kupika.`;
   return notifyCustomer(params.phone, text);
 }
 

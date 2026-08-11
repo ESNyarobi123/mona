@@ -546,6 +546,14 @@ export const enrollRestaurantMembershipSchema = z.object({
   channel: channelSchema.default("WEB"),
 });
 
+export const updateRestaurantMembershipSchema = z.object({
+  mealSlots: z
+    .array(mealSlotSchema)
+    .min(1, "Chagua angalau muda mmoja (asubuhi, mchana, au usiku)")
+    .max(3)
+    .refine((slots) => new Set(slots).size === slots.length, "Usirudie muda uleule"),
+});
+
 export const pauseRestaurantMembershipSchema = z.object({
   weeks: z.coerce.number().int().min(1).max(8).default(1),
 });
@@ -644,10 +652,38 @@ export const updateLocaleSchema = z.object({
   locale: z.enum(["en", "sw"]),
 });
 
-/** Customer: update own profile (name, optional email) */
+/** Customer/Admin: update own profile */
 export const updateProfileSchema = z.object({
   name: z.string().min(2, "Jina lazima iwe angalau herufi 2").optional(),
   email: z.union([z.string().email("Barua pepe si sahihi"), z.literal("")]).optional(),
+  phone: z.string().trim().min(9, "Namba ya simu si sahihi").max(20).optional(),
+  locale: z.enum(["en", "sw"]).optional(),
+  imageUrl: z
+    .union([
+      z.string().url(),
+      z.string().regex(/^\/uploads\//, "Image URL si sahihi"),
+      z.literal(""),
+      z.null(),
+    ])
+    .optional(),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Weka password ya sasa"),
+  newPassword: z.string().min(6, "Password mpya lazima iwe angalau herufi 6"),
+});
+
+export const forgotPasswordSchema = z.object({
+  phone: z.string().trim().min(9, "Namba ya simu si sahihi").max(20),
+});
+
+export const resetPasswordSchema = z.object({
+  phone: z.string().trim().min(9, "Namba ya simu si sahihi").max(20),
+  code: z
+    .string()
+    .trim()
+    .regex(/^\d{6}$/, "Weka msimbo wa tarakimu 6 kutoka WhatsApp"),
+  newPassword: z.string().min(6, "Password mpya lazima iwe angalau herufi 6"),
 });
 
 export const paginationQuerySchema = z.object({

@@ -14,18 +14,19 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
   const justRegistered = searchParams.get("registered") === "1";
-  const [showSuccess, setShowSuccess] = useState(justRegistered);
+  const justReset = searchParams.get("reset") === "1";
+  const [showSuccess, setShowSuccess] = useState(justRegistered || justReset);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!justRegistered) return;
+    if (!justRegistered && !justReset) return;
     setShowSuccess(true);
     const timer = setTimeout(() => setShowSuccess(false), 6000);
     return () => clearTimeout(timer);
-  }, [justRegistered]);
+  }, [justRegistered, justReset]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +47,7 @@ function LoginForm() {
         name: json.data.user.name,
         phone: json.data.user.phone,
         role: json.data.user.role,
+        imageUrl: json.data.user.imageUrl ?? null,
       });
 
       const preferred = getStoredLocale();
@@ -69,8 +71,8 @@ function LoginForm() {
         <div className="auth-toast auth-toast--success" role="status">
           <span className="auth-toast__icon">✓</span>
           <div>
-            <strong>{t("accountCreated")}</strong>
-            <p>{t("signInAfterRegister")}</p>
+            <strong>{justReset ? t("passwordResetSuccess") : t("accountCreated")}</strong>
+            <p>{justReset ? t("signInAfterReset") : t("signInAfterRegister")}</p>
           </div>
           <button
             type="button"
@@ -123,6 +125,10 @@ function LoginForm() {
                 />
               </span>
             </label>
+
+            <p className="auth-form__forgot">
+              <Link href="/forgot-password">{t("forgotPasswordLink")}</Link>
+            </p>
 
             {error ? (
               <p className="auth-form__error" role="alert">

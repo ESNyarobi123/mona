@@ -19,6 +19,8 @@ const FAQ_KEYS = [
   { q: "faq2q" as const, a: "faq2a" as const },
   { q: "faq3q" as const, a: "faq3a" as const },
   { q: "faq4q" as const, a: "faq4a" as const },
+  { q: "faq5q" as const, a: "faq5a" as const },
+  { q: "faq6q" as const, a: "faq6a" as const },
 ];
 
 export function SupportView() {
@@ -96,6 +98,20 @@ export function SupportView() {
             </div>
           ) : null}
 
+          <section className="support-card support-card--catering">
+            <span className="support-card__icon" aria-hidden>
+              🍽️
+            </span>
+            <div>
+              <h2>{t("supportCateringTitle")}</h2>
+              <p>{t("supportCateringBody")}</p>
+              <div className="support-links support-links--inline">
+                <Link href="/catering">{t("supportCateringCta")}</Link>
+                <Link href="/catering/requests">{t("supportCateringMy")}</Link>
+              </div>
+            </div>
+          </section>
+
           <section className="support-faq">
             <h2>FAQ</h2>
             <ul>
@@ -121,6 +137,8 @@ export function SupportView() {
               <Link href="/account">{t("navOverview")}</Link>
               <Link href="/restaurant/orders">{t("navRestOrders")}</Link>
               <Link href="/grocery/orders">{t("navGrocOrders")}</Link>
+              <Link href="/catering">{t("navCatering")}</Link>
+              <Link href="/catering/requests">{t("navCateringOrders")}</Link>
               <Link href="/restaurant/slots">{t("slotsPageTitle")}</Link>
             </div>
           </section>

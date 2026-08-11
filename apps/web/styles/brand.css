@@ -26,6 +26,30 @@
   height: 2.5rem;
 }
 
+/* Landing hero logo — white circle, large & clear top-left */
+.landing-logo--hero {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(4.75rem, 11vw, 6rem);
+  height: clamp(4.75rem, 11vw, 6rem);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(27, 40, 69, 0.08);
+  overflow: hidden;
+}
+
+.landing-logo--hero .monana-logo--site {
+  width: 92%;
+  height: 92%;
+  border-radius: 50%;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
+  box-shadow: none;
+}
+
 .auth-split__brand .monana-logo--mark {
   width: 2.75rem;
   height: 2.75rem;

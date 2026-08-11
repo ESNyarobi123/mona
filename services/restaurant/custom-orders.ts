@@ -14,7 +14,7 @@ export const CUSTOM_ORDER_MIN_LEAD_HOURS = 2.5;
 export const CUSTOM_ORDER_MIN_LEAD_MS = CUSTOM_ORDER_MIN_LEAD_HOURS * 60 * 60 * 1000;
 
 /** Alias used in product copy */
-export const SOCIAL_ORDER_LABEL = "Social Order";
+export const SOCIAL_ORDER_LABEL = "Special Orders";
 
 const CUSTOMER_CANCELABLE: CustomOrderStatus[] = ["PENDING", "QUOTED"];
 
@@ -58,13 +58,13 @@ export function assertCustomOrderLeadTime(requestedFor: Date, now = new Date()) 
   const earliest = new Date(now.getTime() + CUSTOM_ORDER_MIN_LEAD_MS);
   if (requestedFor.getTime() < earliest.getTime()) {
     throw new Error(
-      `Maombi ya Social Order yatume angalau saa ${CUSTOM_ORDER_MIN_LEAD_HOURS} (hadi masaa 3) kabla ya muda wa kupokea — ili tupate nafasi ya kununua mahitaji na kupika.`
+      `Maombi ya Special Orders yatume angalau saa ${CUSTOM_ORDER_MIN_LEAD_HOURS} (hadi masaa 3) kabla ya muda wa kupokea — ili tupate nafasi ya kununua mahitaji na kupika.`
     );
   }
 }
 
 function buildOrderNote(dishName: string, specialRequirements?: string | null) {
-  const lines = [`Social Order: ${dishName}`];
+  const lines = [`Special Orders: ${dishName}`];
   if (specialRequirements?.trim()) lines.push(`Mahitaji: ${specialRequirements.trim()}`);
   lines.push("Malipo: Lipa sasa tu (hakuna Cash on Delivery).");
   return lines.join("\n");
@@ -131,7 +131,23 @@ export async function listUserCustomOrders(userId: string, pagination: Paginatio
       },
     }),
   ]);
-  return paginatedResult(items, total, page, limit);
+
+  const orderIds = items.map((i) => i.orderId).filter((id): id is string => Boolean(id));
+  const payments =
+    orderIds.length === 0
+      ? []
+      : await prisma.payment.findMany({
+          where: { orderId: { in: orderIds } },
+          select: { orderId: true, status: true },
+        });
+  const paymentByOrder = Object.fromEntries(payments.map((p) => [p.orderId, p.status]));
+
+  const enriched = items.map((item) => ({
+    ...item,
+    paymentStatus: item.orderId ? (paymentByOrder[item.orderId] ?? null) : null,
+  }));
+
+  return paginatedResult(enriched, total, page, limit);
 }
 
 export async function listCustomOrders(
@@ -188,7 +204,7 @@ export async function sendSocialOrderQuote(
     where: { id },
     include: { user: { select: { id: true, name: true, phone: true, locale: true } } },
   });
-  if (!existing) throw new Error("Social Order haipatikani");
+  if (!existing) throw new Error("Special Order haipatikani");
   if (!["PENDING", "QUOTED"].includes(existing.status)) {
     throw new Error(`Huwezi kutuma bei wakati status ni ${existing.status}`);
   }
@@ -371,7 +387,7 @@ export async function updateCustomOrderStatus(
   }
 
   const existing = await prisma.restaurantCustomOrder.findUnique({ where: { id } });
-  if (!existing) throw new Error("Social Order haipatikani");
+  if (!existing) throw new Error("Special Order haipatikani");
 
   const allowed = ADMIN_TRANSITIONS[existing.status];
   if (!allowed.includes(data.status)) {
@@ -395,7 +411,7 @@ export async function cancelCustomOrder(id: string, userId: string) {
     where: { id },
     include: { /* order via orderId lookup below */ },
   });
-  if (!existing) throw new Error("Social Order haipatikani");
+  if (!existing) throw new Error("Special Order haipatikani");
   if (existing.userId !== userId) throw new Error("Huna ruhusa");
   if (!CUSTOMER_CANCELABLE.includes(existing.status)) {
     throw new Error("Huwezi kufuta ombi hili sasa — wasiliana na Monana");
@@ -430,8 +446,8 @@ export function customOrderLeadTimeInfo() {
     payBeforeCook: true,
     cashOnDeliveryAllowed: false,
     messageSw:
-      "Social Order ni ombi la nukuu (Request for Quote): tuma bila kulipa. Baada ya bei kutumwa, lazima ulipe kabla chakula hakijaanza kupikwa (hakuna Cash on Delivery). Tuma ombi angalau saa 2.5–3 kabla ya muda wa kula.",
+      "Special Orders ni ombi la nukuu (Request for Quote): tuma bila kulipa. Baada ya bei kutumwa, lazima ulipe kabla chakula hakijaanza kupikwa (hakuna Cash on Delivery). Tuma ombi angalau saa 2.5–3 kabla ya muda wa kula.",
     messageEn:
-      "Social Order is a request for quote: submit without paying. After we send the price, you must pay before cooking starts (no cash on delivery). Send requests at least 2.5–3 hours before your receive time.",
+      "Special Orders are a request for quote: submit without paying. After we send the price, you must pay before cooking starts (no cash on delivery). Send requests at least 2.5–3 hours before your receive time.",
   };
 }

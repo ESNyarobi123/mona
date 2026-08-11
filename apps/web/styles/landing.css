@@ -34,11 +34,11 @@
 .landing-header__inner {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 1rem 1.5rem;
+  padding: 0.85rem 1.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  gap: 1.25rem;
 }
 
 .service-toggle {
@@ -141,10 +141,11 @@
   text-decoration: none;
   color: var(--mn-text);
   line-height: 0;
+  flex-shrink: 0;
 }
 
 .landing-logo:hover {
-  opacity: 0.92;
+  opacity: 0.95;
 }
 
 .landing-nav {

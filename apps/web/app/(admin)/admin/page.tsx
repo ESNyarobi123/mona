@@ -26,6 +26,7 @@ type OverviewStats = {
   usersTotal: number;
   restaurantOrdersToday: number;
   groceryOrdersToday: number;
+  cateringOrdersToday: number;
   revenueToday: number;
   recentOrders: Array<{
     id: string;
@@ -93,6 +94,7 @@ export default function AdminOverviewPage() {
 
   const restShare = pct(stats.restaurantOrdersToday, stats.ordersToday);
   const grocShare = pct(stats.groceryOrdersToday, stats.ordersToday);
+  const cateringShare = pct(stats.cateringOrdersToday, stats.ordersToday);
   const paymentsAction = stats.paymentsAwaiting + stats.paymentsPending;
   const needsAttention = stats.ordersPending > 0 || paymentsAction > 0;
 
@@ -118,8 +120,10 @@ export default function AdminOverviewPage() {
       <AdminModuleLaunchers
         restaurantOrdersToday={stats.restaurantOrdersToday}
         groceryOrdersToday={stats.groceryOrdersToday}
+        cateringOrdersToday={stats.cateringOrdersToday}
         restaurantShare={restShare}
         groceryShare={grocShare}
+        cateringShare={cateringShare}
       />
 
       <div className="admin-kpi-grid">
@@ -172,7 +176,8 @@ export default function AdminOverviewPage() {
           {t("users")}: {stats.usersTotal}
         </Link>
         <span className="admin-insight-chip">
-          {t("navRestaurant")} {stats.restaurantOrdersToday} · {t("navGrocery")} {stats.groceryOrdersToday}
+          {t("navRestaurant")} {stats.restaurantOrdersToday} · {t("navGrocery")} {stats.groceryOrdersToday} ·{" "}
+          {t("navCatering")} {stats.cateringOrdersToday}
         </span>
       </div>
 
@@ -182,6 +187,7 @@ export default function AdminOverviewPage() {
           items={[
             { label: t("chartRest"), value: stats.restaurantOrdersToday, tone: "restaurant" },
             { label: t("chartGroc"), value: stats.groceryOrdersToday, tone: "grocery" },
+            { label: t("chartCat"), value: stats.cateringOrdersToday, tone: "accent" },
             { label: t("chartPendingShort"), value: stats.ordersPending, tone: "accent" },
             { label: t("chartPayments"), value: stats.paymentsAwaiting, tone: "default" },
             { label: t("chartUsers"), value: Math.min(stats.usersTotal, 99), tone: "default" },
@@ -195,6 +201,7 @@ export default function AdminOverviewPage() {
           segments={[
             { label: t("navRestaurant"), value: stats.restaurantOrdersToday, color: "var(--mn-orange)" },
             { label: t("navGrocery"), value: stats.groceryOrdersToday, color: "var(--mn-navy-light)" },
+            { label: t("navCatering"), value: stats.cateringOrdersToday, color: "#8b5cf6" },
             {
               label: t("pending"),
               value: stats.ordersPending,

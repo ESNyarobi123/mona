@@ -108,7 +108,9 @@ export function RestaurantHomeView() {
           ) : (
             <p className="store-hub-slots__hint store-hub-slots__hint--closed">
               {tr(locale, "noSlotOpen")}{" "}
-              <Link href="/restaurant/slots">{tr(locale, "slotSchedule")}</Link>.
+              <Link href="/restaurant/slots">{tr(locale, "slotSchedule")}</Link>.{" "}
+              {t("noSlotOpenSpecialHint")}{" "}
+              <Link href="/restaurant/social-order">{t("customOrderHubCard")}</Link>.
             </p>
           )}
         </section>
@@ -126,6 +128,18 @@ export function RestaurantHomeView() {
             <div className="store-hub__card-text">
               <strong>{t("customOrderHubCard")}</strong>
               <small>{t("customOrderHubCardSub")}</small>
+            </div>
+            <span className="store-hub__card-arrow" aria-hidden>
+              →
+            </span>
+          </Link>
+          <Link href="/restaurant/social-order/requests" className="store-hub__card store-hub__card--default">
+            <span className="store-hub__card-icon" aria-hidden>
+              📝
+            </span>
+            <div className="store-hub__card-text">
+              <strong>{t("customOrderRequestsHubCard")}</strong>
+              <small>{t("customOrderRequestsHubCardSub")}</small>
             </div>
             <span className="store-hub__card-arrow" aria-hidden>
               →

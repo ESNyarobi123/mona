@@ -1,5 +1,6 @@
 import { createPaymentSchema } from "@monana/types";
 import { createPaymentRequest, listPayments } from "@monana/payment";
+import type { BusinessModule } from "@monana/db";
 import { getCheckoutIntent } from "@monana/orders";
 import { parsePagination } from "@monana/utils";
 import { prisma } from "@monana/db";
@@ -15,14 +16,19 @@ export async function GET(req: Request) {
     const status = url.searchParams.get("status") as
       | Parameters<typeof listPayments>[0]
       | null;
+    const module = url.searchParams.get("module") as BusinessModule | null;
     const pagination = parsePagination(url.searchParams);
     const q = url.searchParams.get("q") ?? undefined;
     return ok(
-      await listPayments(status ?? undefined, {
-        page: pagination.page,
-        limit: pagination.limit,
-        q,
-      })
+      await listPayments(
+        status ?? undefined,
+        {
+          module: module ?? undefined,
+          page: pagination.page,
+          limit: pagination.limit,
+          q,
+        }
+      )
     );
   });
 }

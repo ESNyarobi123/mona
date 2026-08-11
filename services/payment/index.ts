@@ -253,10 +253,11 @@ export async function getPayment(paymentId: string) {
 
 export async function listPayments(
   status?: "PENDING" | "AWAITING_CONFIRMATION" | "PAID" | "FAILED" | "REFUNDED",
-  params?: PaginationParams & { q?: string }
+  params?: PaginationParams & { q?: string; module?: "RESTAURANT" | "GROCERY" | "CATERING" }
 ) {
   const clauses: Record<string, unknown>[] = [];
   if (status) clauses.push({ status });
+  if (params?.module) clauses.push({ order: { module: params.module } });
 
   const term = params?.q?.trim();
   if (term) {

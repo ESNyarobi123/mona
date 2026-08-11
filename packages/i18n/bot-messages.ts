@@ -74,6 +74,15 @@ export type BotMessageKey =
   | "restaurantAllWindowsClosed"
   | "restaurantSlotClosed"
   | "restaurantChooseSlot"
+  | "restaurantSpecialOrderOption"
+  | "restaurantSpecialOrderIntro"
+  | "restaurantSpecialOrderAskDish"
+  | "restaurantSpecialOrderAskRequirements"
+  | "restaurantSpecialOrderAskTime"
+  | "restaurantSpecialOrderAskAddress"
+  | "restaurantSpecialOrderTimeInvalid"
+  | "restaurantSpecialOrderCreated"
+  | "restaurantSpecialOrderFailed"
   | "restaurantMembershipChooseSlots"
   | "restaurantMembershipAddressHint"
   | "restaurantMembershipEnrolled"
@@ -198,12 +207,29 @@ const EN: Record<BotMessageKey, string> = {
   groceryHubTitle:
     "🛒 *Grocery*\nWhat would you like?\n\n1️⃣ Shop now (one-time order)\n2️⃣ Subscribe (weekly / monthly delivery)",
   restaurantHubTitle:
-    "🍲 *Restaurant*\n\n1️⃣ Order now\n2️⃣ Join membership (meal reminders on WhatsApp)\n3️⃣ My membership",
+    "🍲 *Restaurant*\n\n1️⃣ Order now\n2️⃣ Join membership (meal reminders on WhatsApp)\n3️⃣ My membership\n4️⃣ Special Orders (request a quote)",
+  restaurantSpecialOrderOption: "4️⃣ Special Orders (request a quote)",
   restaurantAllWindowsClosed:
-    "⛔ *All order windows are closed right now.*\n\n🕒 Current time (EAT): *{time}*\n\n*Schedule:*\n{schedule}\n\n✅ Next window: *{nextLabel}* opens at *{nextTime}*\n🕒 Order during: {nextWindow} ({nextDelivers})",
+    "⛔ *All order windows are closed right now.*\n\n🕒 Current time (EAT): *{time}*\n\n*Schedule:*\n{schedule}\n\n✅ Next window: *{nextLabel}* opens at *{nextTime}*\n🕒 Order during: {nextWindow} ({nextDelivers})\n\n{specialHint}",
   restaurantSlotClosed:
     "⛔ *{label}* — ordering is closed.\n\n🕒 Order window: {orderWindow} ({deliversFor})\n\n✅ Opens again at *{opensAt}*",
   restaurantChooseSlot: "👉 Reply with a slot number.\n{slots}",
+  restaurantSpecialOrderIntro:
+    "📝 *Special Orders* lets you request a custom dish not on today's menu. We will send a price, then you pay before cooking starts.",
+  restaurantSpecialOrderAskDish:
+    "🍲 Send the dish name you want (e.g. Coconut fish, Ndizi nyama).",
+  restaurantSpecialOrderAskRequirements:
+    "💬 Any special requirements? (no garlic, less oil, allergy notes)\nType *-* to skip.",
+  restaurantSpecialOrderAskTime:
+    "🕒 When should we deliver?\nSend in this format: *YYYY-MM-DD HH:MM* (EAT), e.g. *2026-08-11 19:30*",
+  restaurantSpecialOrderAskAddress:
+    "📍 Delivery address (optional).\nType *-* to skip.",
+  restaurantSpecialOrderTimeInvalid:
+    "❌ Time format not valid. Use: *YYYY-MM-DD HH:MM* (EAT), e.g. *2026-08-11 19:30*",
+  restaurantSpecialOrderCreated:
+    "✅ Special Order request received.\nStatus: *Awaiting price*.\nWe'll send your quote on WhatsApp once ready.",
+  restaurantSpecialOrderFailed:
+    "❌ Could not submit Special Order right now. Please try again in a moment.",
   restaurantMembershipChooseSlots:
     "🎫 *Restaurant membership*\nPick your meal times (one, two, or all three).\nReply with numbers, e.g. `1` or `1 3`:\n\n1. 🌅 Breakfast\n2. ☀️ Lunch\n3. 🌙 Dinner",
   restaurantMembershipAddressHint:
@@ -335,12 +361,29 @@ const SW: Record<BotMessageKey, string> = {
   groceryHubTitle:
     "🛒 *Grocery*\nUnataka nini?\n\n1️⃣ Nunua leo (mara moja)\n2️⃣ Jiunge (utoaji kila wiki/mwezi)",
   restaurantHubTitle:
-    "🍲 *Restaurant*\n\n1️⃣ Agiza sasa\n2️⃣ Jiunge uanachama (ukumbusho wa WhatsApp)\n3️⃣ Uanachama wangu",
+    "🍲 *Restaurant*\n\n1️⃣ Agiza sasa\n2️⃣ Jiunge uanachama (ukumbusho wa WhatsApp)\n3️⃣ Uanachama wangu\n4️⃣ Special Orders (omba nukuu)",
+  restaurantSpecialOrderOption: "4️⃣ Special Orders (omba nukuu)",
   restaurantAllWindowsClosed:
-    "⛔ *Dirisha zote za ku-order zimefungwa kwa sasa.*\n\n🕒 Saa sasa (EAT): *{time}*\n\n*Ratiba ya dirisha:*\n{schedule}\n\n✅ Dirisha linalofuata: *{nextLabel}* litafunguliwa saa *{nextTime}*\n🕒 Tuma oda: {nextWindow} ({nextDelivers})",
+    "⛔ *Dirisha zote za ku-order zimefungwa kwa sasa.*\n\n🕒 Saa sasa (EAT): *{time}*\n\n*Ratiba ya dirisha:*\n{schedule}\n\n✅ Dirisha linalofuata: *{nextLabel}* litafunguliwa saa *{nextTime}*\n🕒 Tuma oda: {nextWindow} ({nextDelivers})\n\n{specialHint}",
   restaurantSlotClosed:
     "⛔ *{label}* — dirisha limefungwa.\n\n🕒 Oda: {orderWindow} ({deliversFor})\n\n✅ Litafunguliwa tena saa *{opensAt}*",
   restaurantChooseSlot: "👉 Chagua namba ya dirisha.\n{slots}",
+  restaurantSpecialOrderIntro:
+    "📝 *Special Orders* hukuruhusu kuomba chakula maalum kisicho kwenye menu ya leo. Tutakutumia bei, kisha ulipie kabla ya kupika kuanza.",
+  restaurantSpecialOrderAskDish:
+    "🍲 Tuma jina la chakula unachotaka (mf. Samaki wa nazi, Ndizi nyama).",
+  restaurantSpecialOrderAskRequirements:
+    "💬 Kuna mahitaji maalum? (bila vitunguu saumu, mafuta kidogo, allergy)\nAndika *-* kuruka.",
+  restaurantSpecialOrderAskTime:
+    "🕒 Unahitaji kupokea lini?\nTuma kwa format hii: *YYYY-MM-DD HH:MM* (EAT), mf. *2026-08-11 19:30*",
+  restaurantSpecialOrderAskAddress:
+    "📍 Anwani ya kufikishia (si lazima).\nAndika *-* kuruka.",
+  restaurantSpecialOrderTimeInvalid:
+    "❌ Format ya muda si sahihi. Tumia: *YYYY-MM-DD HH:MM* (EAT), mf. *2026-08-11 19:30*",
+  restaurantSpecialOrderCreated:
+    "✅ Ombi la Special Orders limepokelewa.\nHali: *Inasubiri bei*.\nTutakutumia nukuu kwenye WhatsApp likiwa tayari.",
+  restaurantSpecialOrderFailed:
+    "❌ Imeshindikana kutuma ombi la Special Orders sasa. Tafadhali jaribu tena baada ya muda mfupi.",
   restaurantMembershipChooseSlots:
     "🎫 *Uanachama wa Restaurant*\nChagua muda/muda (moja, mbili, au zote tatu).\nAndika namba, mf. `1` au `1 3`:\n\n1. 🌅 Asubuhi\n2. ☀️ Mchana\n3. 🌙 Usiku",
   restaurantMembershipAddressHint:

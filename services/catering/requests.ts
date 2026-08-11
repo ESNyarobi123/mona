@@ -391,7 +391,23 @@ export async function listUserCateringRequests(userId: string, pagination: Pagin
       include: requestInclude,
     }),
   ]);
-  return paginatedResult(items, total, page, limit);
+
+  const orderIds = items.map((i) => i.orderId).filter((id): id is string => Boolean(id));
+  const payments =
+    orderIds.length === 0
+      ? []
+      : await prisma.payment.findMany({
+          where: { orderId: { in: orderIds } },
+          select: { orderId: true, status: true },
+        });
+  const paymentByOrder = Object.fromEntries(payments.map((p) => [p.orderId, p.status]));
+
+  const enriched = items.map((item) => ({
+    ...item,
+    paymentStatus: item.orderId ? (paymentByOrder[item.orderId] ?? null) : null,
+  }));
+
+  return paginatedResult(enriched, total, page, limit);
 }
 
 export async function listCateringRequests(

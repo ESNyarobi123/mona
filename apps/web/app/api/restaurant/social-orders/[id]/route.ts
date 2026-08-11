@@ -13,7 +13,7 @@ export function GET(req: Request, ctx: Ctx) {
   return handle(async () => {
     const { id } = await ctx.params;
     const order = await getCustomOrderById(id);
-    if (!order) throw new ApiError("Social Order haipatikani", 404);
+    if (!order) throw new ApiError("Special Order haipatikani", 404);
 
     const auth = getAuth(req);
     if (!auth) throw new ApiError("Ingia kwanza", 401);

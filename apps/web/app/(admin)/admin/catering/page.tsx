@@ -28,6 +28,15 @@ type CateringRequest = {
 
 type ListResponse = { items: CateringRequest[] };
 
+const STATUS_OPTIONS = ["PENDING", "QUOTED", "CONFIRMED", "PREPARING", "COMPLETED", "REJECTED", "CANCELLED"] as const;
+
+const NEXT_STATUS: Record<string, string[]> = {
+  PENDING: ["REJECTED", "CANCELLED"],
+  QUOTED: ["REJECTED", "CANCELLED"],
+  CONFIRMED: ["PREPARING", "CANCELLED"],
+  PREPARING: ["COMPLETED", "CANCELLED"],
+};
+
 export default function AdminCateringPage() {
   const { t, locale } = useAdminLocale();
   const [rows, setRows] = useState<CateringRequest[]>([]);
@@ -103,6 +112,10 @@ export default function AdminCateringPage() {
     });
   }
 
+  function statusLabel(statusValue: string) {
+    return statusValue.replaceAll("_", " ");
+  }
+
   return (
     <div className="admin-dash">
       <AdminPageHeader
@@ -119,13 +132,11 @@ export default function AdminCateringPage() {
             </select>
             <select className="admin-input" value={status} onChange={(e) => setStatus(e.target.value)}>
               <option value="">{t("allStatuses")}</option>
-              {["PENDING", "QUOTED", "CONFIRMED", "PREPARING", "COMPLETED", "REJECTED", "CANCELLED"].map(
-                (s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                )
-              )}
+              {STATUS_OPTIONS.map((s) => (
+                <option key={s} value={s}>
+                  {statusLabel(s)}
+                </option>
+              ))}
             </select>
           </>
         }
@@ -145,16 +156,16 @@ export default function AdminCateringPage() {
                 <thead>
                   <tr>
                     <th>{t("customer")}</th>
-                    <th>{t("module")}</th>
-                    <th>{t("customOrderReceive")}</th>
+                    <th>{t("kind")}</th>
+                    <th>{t("date")}</th>
                     <th>{t("status")}</th>
-                    <th>{t("customOrderQuote")}</th>
+                    <th>{t("amount")}</th>
                     <th>{t("actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {rows.map((row) => {
-                    const canQuote = row.status === "PENDING" || row.status === "QUOTED";
+                    const canQuote = row.kind === "CUSTOM_QUOTE" && (row.status === "PENDING" || row.status === "QUOTED");
                     const label = row.package
                       ? locale === "sw"
                         ? row.package.nameSw
@@ -187,7 +198,7 @@ export default function AdminCateringPage() {
                             <>
                               <br />
                               <Link className="admin-link" href={`/pay/${row.orderId}`} target="_blank">
-                                Pay link
+                                {t("socialOrderPayLink")}
                               </Link>
                             </>
                           ) : null}
@@ -216,7 +227,7 @@ export default function AdminCateringPage() {
                         </td>
                         <td>
                           <div className="admin-inline-actions">
-                            {canQuote && row.kind === "CUSTOM_QUOTE" ? (
+                            {canQuote ? (
                               <button
                                 type="button"
                                 className="admin-btn sm"
@@ -226,10 +237,7 @@ export default function AdminCateringPage() {
                                 {t("socialOrderSendPrice")}
                               </button>
                             ) : null}
-                            {["REJECTED", "CANCELLED", "PREPARING", "COMPLETED"]
-                              .filter((s) => s !== row.status)
-                              .slice(0, 2)
-                              .map((next) => (
+                            {(NEXT_STATUS[row.status] ?? []).map((next) => (
                                 <button
                                   key={next}
                                   type="button"
@@ -237,7 +245,7 @@ export default function AdminCateringPage() {
                                   disabled={busyId === row.id}
                                   onClick={() => updateStatus(row.id, next)}
                                 >
-                                  {next}
+                                  {statusLabel(next)}
                                 </button>
                               ))}
                           </div>

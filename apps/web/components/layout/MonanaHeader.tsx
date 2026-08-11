@@ -47,8 +47,16 @@ export function MonanaHeader({ variant = "app" }: { variant?: "landing" | "app" 
   return (
     <header className="landing-header">
       <div className="landing-header__inner">
-        <Link href={logoHref} className="landing-logo" title={user ? t("navAccount") : "Monana"}>
-          <MonanaLogo variant="full" height={56} priority />
+        <Link
+          href={logoHref}
+          className={`landing-logo${isLanding ? " landing-logo--hero" : ""}`}
+          title={user ? t("navAccount") : "Monana FOOD"}
+        >
+          {isLanding ? (
+            <MonanaLogo variant="site" height={88} priority />
+          ) : (
+            <MonanaLogo variant="full" height={56} priority />
+          )}
         </Link>
 
         <nav className="landing-nav" aria-label="Main">

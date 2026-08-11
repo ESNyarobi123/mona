@@ -19,6 +19,10 @@ export type State =
   | "AWAIT_PAYMENT"
   | "ASK_PAYMENT_REFERENCE"
   | "CHOOSING_RESTAURANT_HUB"
+  | "ASK_SPECIAL_ORDER_DISH"
+  | "ASK_SPECIAL_ORDER_REQUIREMENTS"
+  | "ASK_SPECIAL_ORDER_TIME"
+  | "ASK_SPECIAL_ORDER_ADDRESS"
   | "CHOOSING_RESTAURANT_MEMBERSHIP_SLOTS"
   | "ASK_RESTAURANT_MEMBERSHIP_ADDRESS"
   | "MANAGING_RESTAURANT_MEMBERSHIP"
@@ -83,6 +87,9 @@ export type SessionData = {
   pendingSubOrderId?: string;
   selectedMealSlots?: ("BREAKFAST" | "LUNCH" | "DINNER")[];
   restaurantMembershipId?: string;
+  specialOrderDishName?: string;
+  specialOrderRequirements?: string;
+  specialOrderRequestedFor?: string;
 };
 
 export type Session = { state: State; data: SessionData };

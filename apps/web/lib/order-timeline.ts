@@ -8,7 +8,7 @@ export type TimelineStep = {
 };
 
 const GROCERY_FLOW = ["PENDING", "CONFIRMED", "PREPARING", "ON_THE_WAY", "DELIVERED"] as const;
-const RESTAURANT_FLOW = ["PENDING", "CONFIRMED", "PREPARING", "DELIVERED"] as const;
+const RESTAURANT_FLOW = ["PENDING", "CONFIRMED", "PREPARING", "ON_THE_WAY", "DELIVERED"] as const;
 
 export function buildOrderTimeline(
   module: string,
