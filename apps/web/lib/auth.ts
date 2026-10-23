@@ -1,6 +1,7 @@
 // Authentication helpers. MVP: phone-based login with optional password + JWT.
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import { timingSafeEqual } from "node:crypto";
 import { prisma, type Role } from "@monana/db";
 import { normalizeTanzaniaPhone } from "@monana/utils";
 
@@ -113,9 +114,18 @@ export function requireAuth(req: Request): JwtPayload {
   return auth;
 }
 
-/** Trusted WhatsApp bot bridge (same server / internal). */
+/**
+ * Trusted WhatsApp bot bridge (internal network only).
+ * Requires BOTH the channel header and the shared secret, so the header alone
+ * cannot impersonate the bot. Fails closed when the secret is not configured.
+ */
 export function isBotChannel(req: Request): boolean {
-  return req.headers.get("x-monana-channel") === "WHATSAPP";
+  const expected = process.env.BOT_SHARED_SECRET;
+  if (!expected) return false;
+  if (req.headers.get("x-monana-channel") !== "WHATSAPP") return false;
+  const provided = req.headers.get("x-monana-bot-secret") ?? "";
+  if (provided.length !== expected.length) return false;
+  return timingSafeEqual(Buffer.from(provided), Buffer.from(expected));
 }
 
 /** Customer JWT must match userId, or admin, or trusted bot channel. */

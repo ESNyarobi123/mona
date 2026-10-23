@@ -1,12 +1,13 @@
 import { registerSchema, registerWebSchema } from "@monana/types";
 import { handle, ok, parseBody } from "../../../../lib/api";
 import { registerUser, signToken } from "../../../../lib/auth";
+import { isBotChannel } from "../../../../lib/auth";
 import { notifyAdminNewUser } from "../../../../lib/whatsapp";
 
 /** POST /api/auth/register — web (password required) or WhatsApp bot (name only) */
 export async function POST(req: Request) {
   return handle(async () => {
-    const isBot = req.headers.get("x-monana-channel") === "WHATSAPP";
+    const isBot = isBotChannel(req);
     const input = isBot
       ? await parseBody(req, registerSchema)
       : await parseBody(req, registerWebSchema);

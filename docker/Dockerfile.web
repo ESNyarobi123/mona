@@ -13,6 +13,7 @@ COPY packages/utils/package.json packages/utils/
 COPY packages/i18n/package.json packages/i18n/
 COPY services/admin/package.json services/admin/
 COPY services/bot/package.json services/bot/
+COPY services/catering/package.json services/catering/
 COPY services/grocery/package.json services/grocery/
 COPY services/hot-products/package.json services/hot-products/
 COPY services/notifications/package.json services/notifications/

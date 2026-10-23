@@ -52,6 +52,7 @@ services:
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://monanafood.co.tz}
       API_BASE_URL: ${API_BASE_URL:-http://web:3000/api}
       BOT_URL: http://bot:4000
+      BOT_SHARED_SECRET: ${BOT_SHARED_SECRET:?Set BOT_SHARED_SECRET in .env}
       ADMIN_WHATSAPP_NUMBER: ${ADMIN_WHATSAPP_NUMBER:-}
       LIPA_NAMBA: ${LIPA_NAMBA:-}
       LIPA_NAMBA_NAME: ${LIPA_NAMBA_NAME:-MONANA}
@@ -85,6 +86,7 @@ services:
       BOT_PORT: "4000"
       BOT_SESSION_PATH: /data/session
       API_BASE_URL: http://web:3000/api
+      BOT_SHARED_SECRET: ${BOT_SHARED_SECRET:?Set BOT_SHARED_SECRET in .env}
       ADMIN_WHATSAPP_NUMBER: ${ADMIN_WHATSAPP_NUMBER:-}
       CRON_SECRET: ${CRON_SECRET:-}
     ports:

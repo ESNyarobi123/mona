@@ -7,6 +7,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: {
       "Content-Type": "application/json",
       "x-monana-channel": "WHATSAPP",
+      "x-monana-bot-secret": process.env.BOT_SHARED_SECRET ?? "",
     },
     ...init,
   });
