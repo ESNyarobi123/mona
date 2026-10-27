@@ -25,7 +25,7 @@ export async function GET(req: Request) {
       where: { id: auth.sub },
       select: userSelect,
     });
-    if (!user) throw new ApiError("Mtumiaji hajapatikana", 404);
+    if (!user) throw new ApiError("Kipindi kimeisha — tafadhali ingia tena", 401);
     return ok(user);
   });
 }

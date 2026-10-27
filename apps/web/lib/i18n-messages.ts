@@ -1094,6 +1094,10 @@ export const UI_MESSAGES = {
   backToHome: { en: "← Back to home", sw: "← Rudi nyumbani" },
   dismiss: { en: "Dismiss", sw: "Funga" },
   signInFailed: { en: "Sign in failed", sw: "Imeshindwa kuingia" },
+  tooManyAttempts: {
+    en: "Too many attempts. Please wait a minute and try again.",
+    sw: "Majaribio ni mengi mno. Tafadhali subiri dakika moja kisha ujaribu tena.",
+  },
   phonePlaceholder: { en: "255 7XX XXX XXX", sw: "255 7XX XXX XXX" },
   registerProgress: { en: "Registration progress", sw: "Hatua za usajili" },
   yourNamePlaceholder: { en: "Your name", sw: "Jina lako" },
