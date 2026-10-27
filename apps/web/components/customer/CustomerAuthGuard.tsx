@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { clearSession, getToken, getStoredUser, apiGet } from "../../lib/admin-api";
+import { clearSession, getToken, getStoredUser, apiGet, isSessionInvalidError } from "../../lib/admin-api";
 import { useCustomerLocale } from "./CustomerLocaleProvider";
 
 type Me = { id: string; name: string | null; phone: string; role: string };
@@ -38,10 +38,16 @@ export function CustomerAuthGuard({ children }: { children: ReactNode }) {
           return;
         }
         setReady(true);
-      } catch {
+      } catch (err) {
         if (cancelled) return;
-        clearSession();
-        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        // Only a real rejection (401/403) ends the session. A 429 rate limit,
+        // a 5xx or a network blip must keep the user signed in.
+        if (isSessionInvalidError(err)) {
+          clearSession();
+          router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+          return;
+        }
+        setReady(true);
       }
     }
 

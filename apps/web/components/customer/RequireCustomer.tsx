@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { clearSession, getToken, getStoredUser, apiGet } from "../../lib/admin-api";
+import { clearSession, getToken, getStoredUser, apiGet, isSessionInvalidError } from "../../lib/admin-api";
 
 export function RequireCustomer({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -31,10 +31,15 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
           return;
         }
         setReady(true);
-      } catch {
+      } catch (err) {
         if (cancelled) return;
-        clearSession();
-        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        // Only a real rejection (401/403) ends the session.
+        if (isSessionInvalidError(err)) {
+          clearSession();
+          router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+          return;
+        }
+        setReady(true);
       }
     }
 

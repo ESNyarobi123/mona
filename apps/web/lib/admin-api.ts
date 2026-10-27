@@ -53,6 +53,14 @@ export function isApiNotFoundError(err: unknown): boolean {
   return err instanceof ApiClientError && err.status === 404;
 }
 
+/**
+ * True only when the API actively rejected the session.
+ * Network blips, 429 rate limits and 5xx must NOT sign the user out.
+ */
+export function isSessionInvalidError(err: unknown): boolean {
+  return err instanceof ApiClientError && (err.status === 401 || err.status === 403);
+}
+
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getToken();
   const res = await fetch(path, {
@@ -63,7 +71,24 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
       ...init?.headers,
     },
   });
-  const json = (await res.json()) as ApiResult<T>;
+
+  // A proxy may answer with HTML/empty (429, 502, 504…). Never crash on that.
+  let json: ApiResult<T> | null = null;
+  try {
+    json = (await res.json()) as ApiResult<T>;
+  } catch {
+    json = null;
+  }
+
+  if (!json) {
+    throw new ApiClientError(
+      res.status === 429
+        ? "Maombi ni mengi mno kwa sasa. Subiri sekunde chache kisha ujaribu tena."
+        : `Hitilafu ya mtandao (${res.status || "no response"})`,
+      res.status || 0
+    );
+  }
+
   if (!json.success) {
     const message = "error" in json ? json.error : "Hitilafu ya API";
     throw new ApiClientError(message, res.status);
