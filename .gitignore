@@ -40,3 +40,6 @@ docker/nginx/certbot-www/*
 # editor
 .vscode/
 .idea/
+
+# Local Docker Desktop env
+.env.docker
