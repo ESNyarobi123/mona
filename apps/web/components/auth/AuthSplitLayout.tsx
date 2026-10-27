@@ -19,8 +19,10 @@ export function AuthSplitLayout({ children }: { children: ReactNode }) {
         <Image src={AUTH_HERO} alt="" fill className="auth-split__photo" priority sizes="50vw" />
         <div className="auth-split__overlay" />
         <div className="auth-split__visual-content">
-          <Link href="/" className="auth-split__brand">
-            <MonanaLogo variant="full" height={72} priority />
+          <Link href="/" className="auth-split__brand" aria-label="Monana FOOD">
+            <span className="auth-split__brand-badge">
+              <MonanaLogo variant="site" height={88} priority />
+            </span>
           </Link>
           <h2 className="auth-split__tagline">
             {t("authTagline")} <span>{t("authTaglineAccent")}</span>

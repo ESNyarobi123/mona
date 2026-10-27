@@ -63,6 +63,30 @@
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.28);
 }
 
+/* Auth pages use the same circular brand badge as the landing header */
+.auth-split__brand-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(4.75rem, 11vw, 6rem);
+  height: clamp(4.75rem, 11vw, 6rem);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 6px 22px rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  overflow: hidden;
+}
+
+.auth-split__brand-badge .monana-logo--site {
+  width: 92%;
+  height: 92%;
+  border-radius: 50%;
+  object-fit: contain;
+  object-position: center;
+  background: transparent;
+  box-shadow: none;
+}
+
 .admin-sidebar-brand .monana-logo--mark {
   width: 2.25rem;
   height: 2.25rem;

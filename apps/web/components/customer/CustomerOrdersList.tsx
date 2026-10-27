@@ -79,7 +79,7 @@ function itemsSummary(items: OrderItem[] | undefined, moreLabel: string) {
   return preview.join(", ") + more;
 }
 
-export function CustomerOrdersList({ module }: { module: "RESTAURANT" | "GROCERY" }) {
+export function CustomerOrdersList({ module }: { module?: "RESTAURANT" | "GROCERY" }) {
   const { locale, t } = useAppLocale();
   const cfg = useMemo(
     () =>
@@ -92,13 +92,22 @@ export function CustomerOrdersList({ module }: { module: "RESTAURANT" | "GROCERY
             shopLabel: t("orderAgainRest"),
             accent: "orange" as const,
           }
-        : {
+        : module === "GROCERY"
+        ? {
             title: t("ordersGrocTitle"),
             subtitle: t("ordersGrocSub"),
             icon: "🛒",
             shopHref: "/grocery/products",
             shopLabel: t("orderAgainGroc"),
             accent: "navy" as const,
+          }
+        : {
+            title: t("ordersAllTitle"),
+            subtitle: t("ordersAllSub"),
+            icon: "🧾",
+            shopHref: "/restaurant/menu",
+            shopLabel: t("browseShops"),
+            accent: "orange" as const,
           },
     [module, locale, t]
   );
@@ -113,7 +122,9 @@ export function CustomerOrdersList({ module }: { module: "RESTAURANT" | "GROCERY
     const user = getStoredUser();
     if (!user) return;
 
-    apiGet<OrdersResponse>(`/api/orders?userId=${user.id}&module=${module}&limit=50`)
+    apiGet<OrdersResponse>(
+      `/api/orders?userId=${user.id}${module ? `&module=${module}` : ""}&limit=50`
+    )
       .then((data) => {
         const norm = normalize(data);
         setOrders(norm.items);
