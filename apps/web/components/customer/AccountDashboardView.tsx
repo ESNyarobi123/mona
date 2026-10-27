@@ -99,7 +99,7 @@ export function AccountDashboardView() {
     async function load() {
       try {
         await refresh();
-        const profile = await apiGet<Me>("/api/auth");
+        const profile = await apiGet<Me>("/api/auth/me");
         if (cancelled) return;
         setMe(profile);
 

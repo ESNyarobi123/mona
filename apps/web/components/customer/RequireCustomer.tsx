@@ -24,7 +24,7 @@ export function RequireCustomer({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const me = await apiGet<{ role: string }>("/api/auth");
+        const me = await apiGet<{ role: string }>("/api/auth/me");
         if (cancelled) return;
         if (me.role === "ADMIN") {
           router.replace("/admin");

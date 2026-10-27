@@ -36,7 +36,7 @@ export function ProfileView() {
   const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
-    apiGet<Profile>("/api/auth")
+    apiGet<Profile>("/api/auth/me")
       .then((p) => {
         setProfile(p);
         setName(p.name ?? "");
@@ -54,7 +54,7 @@ export function ProfileView() {
     setError("");
     setSuccess("");
     try {
-      const updated = await apiPatch<Profile>("/api/auth", {
+      const updated = await apiPatch<Profile>("/api/auth/me", {
         name: name.trim(),
         email: email.trim(),
       });

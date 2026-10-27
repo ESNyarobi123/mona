@@ -68,7 +68,7 @@ export function AppLocaleProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const me = await apiGet<Profile>("/api/auth");
+      const me = await apiGet<Profile>("/api/auth/me");
       const profileLocale = parseLocale(me.locale);
       if (profileLocale !== stored) {
         await syncLocaleToServer(me.id, stored, token);

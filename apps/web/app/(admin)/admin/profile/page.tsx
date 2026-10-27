@@ -106,7 +106,7 @@ export default function AdminProfilePage() {
 
   function load() {
     setLoading(true);
-    apiGet<Profile>("/api/auth")
+    apiGet<Profile>("/api/auth/me")
       .then((p) => {
         setProfile(p);
         setName(p.name ?? "");
@@ -130,7 +130,7 @@ export default function AdminProfilePage() {
     setError("");
     setSuccess("");
     try {
-      const updated = await apiPatch<Profile>("/api/auth", {
+      const updated = await apiPatch<Profile>("/api/auth/me", {
         name: name.trim(),
         phone: phone.trim(),
         email: email.trim(),
@@ -155,7 +155,7 @@ export default function AdminProfilePage() {
     try {
       const { url } = await apiUploadFile("/api/admin/uploads", file);
       setImageUrl(url);
-      const updated = await apiPatch<Profile>("/api/auth", { imageUrl: url });
+      const updated = await apiPatch<Profile>("/api/auth/me", { imageUrl: url });
       setProfile(updated);
       refreshSession(updated, updated.token);
       setSuccess(t("profilePhotoUpdated"));
@@ -171,7 +171,7 @@ export default function AdminProfilePage() {
     setSaving(true);
     setError("");
     try {
-      const updated = await apiPatch<Profile>("/api/auth", { imageUrl: null });
+      const updated = await apiPatch<Profile>("/api/auth/me", { imageUrl: null });
       setImageUrl("");
       setProfile(updated);
       refreshSession(updated, updated.token);

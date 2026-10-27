@@ -31,7 +31,7 @@ export function CustomerAuthGuard({ children }: { children: ReactNode }) {
       }
 
       try {
-        const me = await apiGet<Me>("/api/auth");
+        const me = await apiGet<Me>("/api/auth/me");
         if (cancelled) return;
         if (me.role === "ADMIN") {
           router.replace("/admin");
