@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { phoneSchema } from "@monana/types";
+import { toPublicUser } from "@monana/db";
 import { handle, ok, parseBody } from "../../../../lib/api";
 import { findOrCreateUser, signToken } from "../../../../lib/auth";
 import { ApiError, isBotChannel } from "../../../../lib/auth";
@@ -18,6 +19,6 @@ export async function POST(req: Request) {
       throw new ApiError("Akaunti hii inahitaji kuingia kwa password kwenye tovuti", 403);
     }
     const token = signToken({ sub: user.id, role: user.role, phone: user.phone });
-    return ok({ user, token });
+    return ok({ user: toPublicUser(user), token });
   });
 }

@@ -1,4 +1,4 @@
-import { prisma, type MealSlot, type KitchenQueueStatus } from "@monana/db";
+import { prisma, publicUserSelect, type MealSlot, type KitchenQueueStatus } from "@monana/db";
 
 // Kitchen prep queue for restaurant daily orders.
 
@@ -16,7 +16,7 @@ export async function enqueueKitchen(orderId: string, mealSlot: MealSlot) {
 export async function listKitchenQueue(mealSlot?: MealSlot) {
   return prisma.kitchenQueue.findMany({
     where: mealSlot ? { mealSlot } : undefined,
-    include: { order: { include: { user: true, items: true } } },
+    include: { order: { include: { user: { select: publicUserSelect }, items: true } } },
     orderBy: [{ mealSlot: "asc" }, { position: "asc" }],
   });
 }

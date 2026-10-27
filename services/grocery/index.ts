@@ -1,4 +1,4 @@
-import { prisma, type BusinessModule, type SubscriptionStatus } from "@monana/db";
+import { prisma, publicUserSelect, type BusinessModule, type SubscriptionStatus } from "@monana/db";
 import { paginatedResult } from "@monana/utils";
 import { assertActiveUnit } from "./units";
 import {
@@ -389,7 +389,7 @@ export async function getSubscriptionById(id: string) {
 export async function listAllSubscriptions(status?: SubscriptionStatus) {
   return prisma.grocerySubscription.findMany({
     where: status ? { status } : undefined,
-    include: { package: true, user: true },
+    include: { package: true, user: { select: publicUserSelect } },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -464,7 +464,7 @@ export async function listSubscriptionsPaginated(params: {
       where,
       skip,
       take: limit,
-      include: { package: true, user: true },
+      include: { package: true, user: { select: publicUserSelect } },
       orderBy: { createdAt: "desc" },
     }),
     prisma.grocerySubscription.count({ where }),

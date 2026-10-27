@@ -1,4 +1,5 @@
 import { registerSchema, registerWebSchema } from "@monana/types";
+import { toPublicUser } from "@monana/db";
 import { handle, ok, parseBody } from "../../../../lib/api";
 import { registerUser, signToken } from "../../../../lib/auth";
 import { isBotChannel } from "../../../../lib/auth";
@@ -18,7 +19,7 @@ export async function POST(req: Request) {
 
     if (isBot) {
       const token = signToken({ sub: user.id, role: user.role, phone: user.phone });
-      return ok({ user, token }, 201);
+      return ok({ user: toPublicUser(user), token }, 201);
     }
 
     return ok(

@@ -1,4 +1,4 @@
-import { prisma } from "@monana/db";
+import { prisma, publicUserSelect } from "@monana/db";
 
 function startOfToday() {
   const d = new Date();
@@ -35,13 +35,13 @@ export async function getOverviewStats() {
     prisma.order.findMany({
       take: 8,
       orderBy: { createdAt: "desc" },
-      include: { user: true, payment: true },
+      include: { user: { select: publicUserSelect }, payment: true },
     }),
     prisma.payment.findMany({
       where: { status: { in: ["AWAITING_CONFIRMATION", "PENDING"] } },
       take: 8,
       orderBy: { createdAt: "desc" },
-      include: { order: true, user: true },
+      include: { order: true, user: { select: publicUserSelect } },
     }),
   ]);
 
@@ -85,7 +85,7 @@ export async function getRestaurantStats() {
       }),
       prisma.kitchenQueue.findMany({
         where: { status: { in: ["WAITING", "COOKING", "READY"] } },
-        include: { order: { include: { user: true, items: true } } },
+        include: { order: { include: { user: { select: publicUserSelect }, items: true } } },
         orderBy: [{ mealSlot: "asc" }, { position: "asc" }],
         take: 10,
       }),
@@ -114,7 +114,7 @@ export async function getRestaurantStats() {
     where: { module: "RESTAURANT" },
     take: 6,
     orderBy: { createdAt: "desc" },
-    include: { user: true, items: true, kitchenQueue: true },
+    include: { user: { select: publicUserSelect }, items: true, kitchenQueue: true },
   });
 
   return {
@@ -170,12 +170,12 @@ export async function getGroceryStats() {
       where: { module: "GROCERY" },
       take: 6,
       orderBy: { createdAt: "desc" },
-      include: { user: true, items: true },
+      include: { user: { select: publicUserSelect }, items: true },
     }),
     prisma.grocerySubscription.findMany({
       take: 6,
       orderBy: { createdAt: "desc" },
-      include: { package: true, user: true },
+      include: { package: true, user: { select: publicUserSelect } },
     }),
   ]);
 

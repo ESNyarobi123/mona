@@ -1,4 +1,4 @@
-import { prisma, Prisma, type Channel, type PackageKind, type SubscriptionFrequency } from "@monana/db";
+import { prisma, publicUserSelect, Prisma, type Channel, type PackageKind, type SubscriptionFrequency } from "@monana/db";
 import { createPaymentRequest } from "@monana/payment";
 import { MEMBERSHIP_PLANS } from "@monana/utils";
 import {
@@ -261,7 +261,7 @@ export async function createSubscriptionCheckoutIntent(
 ) {
   const sub = await prisma.grocerySubscription.findUnique({
     where: { id: subscriptionId },
-    include: { package: true, user: true },
+    include: { package: true, user: { select: publicUserSelect } },
   });
   if (!sub) throw new Error("Usajili haupatikani");
   if (sub.status === "CANCELLED") throw new Error("Usajili umesitishwa");
@@ -295,7 +295,7 @@ export async function createSubscriptionPrepayOrder(
 ) {
   const sub = await prisma.grocerySubscription.findUnique({
     where: { id: subscriptionId },
-    include: { package: true, user: true },
+    include: { package: true, user: { select: publicUserSelect } },
   });
   if (!sub) throw new Error("Usajili haupatikani");
   if (sub.status === "CANCELLED") throw new Error("Usajili umesitishwa");

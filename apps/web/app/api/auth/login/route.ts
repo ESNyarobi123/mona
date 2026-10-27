@@ -1,4 +1,5 @@
 import { loginSchema } from "@monana/types";
+import { toPublicUser } from "@monana/db";
 import { handle, ok, parseBody } from "../../../../lib/api";
 import { loginUser, signToken } from "../../../../lib/auth";
 
@@ -7,6 +8,6 @@ export async function POST(req: Request) {
     const input = await parseBody(req, loginSchema);
     const user = await loginUser(input);
     const token = signToken({ sub: user.id, role: user.role, phone: user.phone });
-    return ok({ user, token });
+    return ok({ user: toPublicUser(user), token });
   });
 }

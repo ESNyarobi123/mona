@@ -60,14 +60,21 @@ export async function isPhoneAvailable(phone: string): Promise<boolean> {
 
 export async function loginUser(input: { phone: string; password?: string }) {
   const user = await prisma.user.findUnique({ where: { phone: normalizePhone(input.phone) } });
-  if (!user) throw new Error("Mtumiaji hajapatikana");
+  const invalid = new ApiError("Namba ya simu au password si sahihi", 401);
+  if (!user) throw invalid;
 
-  // If the account has a password set, it must match.
-  if (user.password) {
-    if (!input.password) throw new Error("Password inahitajika");
-    const ok = await bcrypt.compare(input.password, user.password);
-    if (!ok) throw new Error("Password si sahihi");
+  // Accounts created through the WhatsApp bot have no password yet.
+  // They must set one via the reset flow instead of logging in with the phone alone.
+  if (!user.password) {
+    throw new ApiError(
+      "Akaunti hii haina password. Tumia “Umesahau password?” kupata msimbo wa WhatsApp kisha weka password.",
+      400
+    );
   }
+  if (!input.password) throw new ApiError("Weka password yako", 400);
+
+  const ok = await bcrypt.compare(input.password, user.password);
+  if (!ok) throw invalid;
 
   return user;
 }
